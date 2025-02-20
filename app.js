@@ -1,17 +1,27 @@
 const express = require ('express');
 const mongoose = require('mongoose');
 const dotenv = require ('dotenv');
+const ejsMate = require('ejs-mate');
+const path = require ('path');
+const app = express();
+
+app.engine('ejs', ejsMate)
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, 'tournaments'))
+
+app.use(express.urlencoded({ extended: true }));
+//app.use(methodOverride('_method'));
+app.use(express.static(path.join(__dirname, '../public')))
 
 //const authRoutes = require('./routes/authRoutes');
-const tournamentRoutes = require('./routes/tournamentRoutes');
-
-const app = express ();
+const tournaments = require('./routes/tournaments');
 
 // Middleware
-app.use(express.json());
+//app.use(express.json());
+app.use('/tournaments', tournaments)
 
 // Połączenie z MongoDB
-mongoose.connect(process.env.MONGO_URI, {
+mongoose.connect('mongodb://localhost:27017/tournaments', {
   useNewUrlParser: true,
   useUnifiedTopology: true
 })
@@ -20,7 +30,7 @@ mongoose.connect(process.env.MONGO_URI, {
 
 // Trasy
 //app.use('/api/auth', authRoutes);
-app.use('/api/tournaments', tournamentRoutes);
+//app.use('/api/tournaments', tournamentRoutes);
 
 // Port
 const PORT = process.env.PORT || 5000;

@@ -7,7 +7,11 @@ const router = express.Router();
 
 // Tworzenie turnieju (dostępne tylko dla organizatorów)
 router.post('/', authMiddleware, tournamentController.createTournament);
-router.get('/', tournamentController.getTournaments);
+router.get('/', async (req, res) => {
+    //res.send('tournaments here');
+    const tournaments = await Tournament.find({});
+    res.render('tournaments/index', {tournaments})
+});
 router.get('/:id', tournamentController.getTournament);
 router.put('/:id', authMiddleware, tournamentController.updateTournament);
 router.delete('/:id', authMiddleware, tournamentController.deleteTournament);
