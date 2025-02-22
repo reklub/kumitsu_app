@@ -1,0 +1,56 @@
+/* Single Tournament View Page Styles */
+
+/* General Body Styling */
+body {
+    background-color: #f0f8ff; /* Light blue background */
+    font-family: 'Arial', sans-serif;
+}
+
+/* Tournament Card Styling */
+.card {
+    border-radius: 15px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease-in-out;
+}
+
+/* Card Hover Effect */
+.card:hover {
+    transform: translateY(-5px); /* Slightly lift the card on hover */
+}
+
+/* Card Title Styling */
+.card-title {
+    font-size: 1.5rem;
+    color: #4e73df;
+}
+
+/* Card Text Styling */
+.card-text {
+    font-size: 1.1rem;
+    color: #555;
+}
+
+/* Button Styling */
+.btn {
+    border-radius: 25px;
+    padding: 10px 20px;
+}
+
+/* Hover Effect for Buttons */
+.btn-primary:hover {
+    background-color: #0056b3;
+    border-color: #0056b3;
+}
+
+/* Back to List Button */
+.btn-secondary {
+    padding: 12px 25px;
+    font-size: 1.1rem;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    .card {
+        margin: 10px 0;
+    }
+}

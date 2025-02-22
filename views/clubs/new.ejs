@@ -1,0 +1,42 @@
+<!-- <form action="/tournament/<%= tournament.id %>/add-club" method="POST">
+    <label for="clubName">Club Name:</label>
+    <input type="text" id="clubName" name="clubName" required>
+    <button type="submit">Add Club</button>
+</form> -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Club</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="/stylesheets/newClubParticipant.css">
+</head>
+<body>
+
+    <div class="container">
+        <h2><i class="fas fa-trophy"></i> Add New Club</h2>
+        <p>Register your club for the tournament</p>
+
+        <form action="/tournaments/<%= tournament.id %>/add-club" method="POST">
+            <div class="mb-3">
+                <input type="text" class="form-control" id="clubName" name="clubName" placeholder="Enter Club name" required>
+            </div>
+            <div class="mb-3">
+                <input type="text" class="form-control" id="clubCity" name="clubCity" placeholder="Enter Club city" required>
+            </div>
+            <div class="mb-3">
+                <input type="text" class="form-control" id="clubCountry" name="clubCountry" placeholder="Enter Club country" required>
+            </div>
+            <button type="submit" class="btn btn-custom w-100">Submit Club</button>
+        </form>
+
+        <div class="mt-3">
+            <a href="/tournaments/<%= tournament.id %>" class="back-link"><i class="fas fa-arrow-left"></i> Back to Tournament</a>
+        </div>
+    </div>
+
+</body>
+</html>

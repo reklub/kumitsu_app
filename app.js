@@ -7,11 +7,11 @@ const app = express();
 
 app.engine('ejs', ejsMate)
 app.set('view engine', 'ejs');
-app.set('views', path.join(__dirname, 'tournaments'))
+app.set('views', path.join(__dirname, 'views'))
 
 app.use(express.urlencoded({ extended: true }));
 //app.use(methodOverride('_method'));
-app.use(express.static(path.join(__dirname, '../public')))
+app.use(express.static(path.join(__dirname, 'public')))
 
 //const authRoutes = require('./routes/authRoutes');
 const tournaments = require('./routes/tournaments');
@@ -27,10 +27,6 @@ mongoose.connect('mongodb://localhost:27017/tournaments', {
 })
 .then(() => console.log('Połączono z MongoDB'))
 .catch((err) => console.log(err));
-
-// Trasy
-//app.use('/api/auth', authRoutes);
-//app.use('/api/tournaments', tournamentRoutes);
 
 // Port
 const PORT = process.env.PORT || 5000;

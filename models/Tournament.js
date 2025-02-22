@@ -5,12 +5,12 @@ const tournamentSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  startDate: {
+  date: {
     type: Date,
     required: true
   },
-  endDate: {
-    type: Date,
+  description: {
+    type: String,
     required: true
   },
   location: {
@@ -20,8 +20,9 @@ const tournamentSchema = new mongoose.Schema({
   organizer: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true
-  }
+    required: false
+  },
+  clubs: [{ type: mongoose.Schema.Types.ObjectId, ref: "Club" }]
 });
 
 const Tournament = mongoose.model('Tournament', tournamentSchema);
