@@ -1,6 +1,7 @@
 const express = require('express');
 const Tournament = require('../models/Tournament');
 const Club = require('../models/Club');
+const Participant = require('../models/Participant');
 const tournamentController = require('../controllers/tournamentController');
 const authMiddleware = require('../middlewares/authMiddleware');
 
@@ -67,6 +68,50 @@ router.post('/:id/add-club', async (req, res) => {
 
     res.redirect(`/tournaments/${tournament._id}`);
 });
+
+router.get("/:id/club/:clubId", async (req, res) => {
+    try {
+        const club = await Club.findById(req.params.clubId).populate("participants");
+        if (!club) return res.status(404).send("Club not found");
+
+        res.render("clubs/show", { club });
+    } catch (err) {
+        res.status(500).send("Error loading club management page: " + err.message);
+    }
+});
+
+router.post("/:id/club/:clubId/add-participant", async (req, res) => {
+    try {
+        //const { name, surname, dob, weight, belt, sex } = req.body;
+        const club = await Club.findById(req.params.clubId);
+        const tournament = await Tournament.findById(req.params.id);
+        if (!club) return res.status(404).send("Club not found");
+
+        // Create new participant linked to the club
+        const participant = new Participant({
+            firstName: req.body.name,
+            lastName: req.body.surname,
+            dateOfBirth: new Date(req.body.dob),
+            weight: parseFloat(req.body.weight),
+            beltRank: req.body.belt,
+            gender: req.body.sex,
+            //category,
+            club: club._id // Link participant to this club
+
+        });
+
+        await participant.save(); // Save participant to DB
+
+        // Add participant's ID to the club
+        club.participants.push(participant._id);
+        await club.save(); // Save club update
+
+        res.redirect(`/tournaments/${tournament._id}/club/${club._id}`);
+    } catch (err) {
+        res.status(500).send("Error adding participant: " + err.message);
+    }
+});
+
 router.put('/:id', authMiddleware, tournamentController.updateTournament);
 router.delete('/:id', authMiddleware, tournamentController.deleteTournament);
 

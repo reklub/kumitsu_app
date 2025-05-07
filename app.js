@@ -19,6 +19,7 @@ const tournaments = require('./routes/tournaments');
 // Middleware
 //app.use(express.json());
 app.use('/tournaments', tournaments)
+//app.use('/clubs', clubs)
 
 // Połączenie z MongoDB
 mongoose.connect('mongodb://localhost:27017/tournaments', {
