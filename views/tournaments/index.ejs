@@ -27,11 +27,11 @@
                         <div class="card-body">
                             <h5 class="card-title"><%= tournament.name %></h5>
                             <h6 class="card-subtitle mb-2 text-muted">
-                                <%= tournament.date.toLocaleDateString() %> 
+                                <%= tournament.startDate.toLocaleDateString() %> 
                             </h6>
                             <p class="card-text"><%= tournament.description %></p>
                             <p class="card-text"><strong>Location:</strong> <%= tournament.location %></p>
-                            <a href="/tournaments/<%= tournament._id %>" class="btn btn-primary">Join Tournament</a>
+                            <a href="/tournaments/<%= tournament._id %>" class="btn btn-primary">View Tournament</a>
                         </div>
                     </div>
                 </div>

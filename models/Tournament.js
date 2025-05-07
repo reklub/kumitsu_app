@@ -5,13 +5,25 @@ const tournamentSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  date: {
+  startDate: {
+    type: Date,
+    required: true
+  },
+  endDate: {
+    type: Date,
+    required: true
+  },
+  registrationStartDate: {
+    type: Date,
+    required: true
+  },
+  registrationEndDate: {
     type: Date,
     required: true
   },
   description: {
     type: String,
-    required: true
+    required: false
   },
   location: {
     type: String,

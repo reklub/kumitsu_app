@@ -12,8 +12,8 @@ router.post('/', authMiddleware, tournamentController.createTournament);
 router.get('/', async (req, res) => {
     try {
         // Fetch all tournaments from the database and sort them by date (ascending)
-        const tournaments = await Tournament.find({ date: { $gte: new Date() } })
-                                             .sort({ date: 1 });  // 1 for ascending order
+        const tournaments = await Tournament.find({ startDate: { $gte: new Date() } })
+                                             .sort({ startDate: 1 });  // 1 for ascending order
         
         res.render('tournaments/index', { tournaments });
     } catch (error) {
@@ -26,8 +26,8 @@ router.get('/create-tournament', (req, res) => {
 });
 router.post('/create-tournament', async (req, res) => {
     try {
-        const { name, description, date, location } = req.body;
-        const newTournament = new Tournament({ name, date, description, location });
+        const { name, description, startDate, endDate, registrationStartDate, registrationEndDate, location } = req.body;
+        const newTournament = new Tournament({ name, description, startDate, endDate, registrationStartDate, registrationEndDate, location });
         await newTournament.save();
         res.redirect('/tournaments/'); // Redirect back to the tournaments list
     } catch (error) {

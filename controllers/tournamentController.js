@@ -2,13 +2,16 @@ const Tournament = require('../models/Tournament');
 
 // Create a tournament
 exports.createTournament = async (req, res) => {
-  const { name, startDate, endDate, location } = req.body;
+  const { name, startDate, endDate, registrationStart, registrationEnd, description, location } = req.body;
   
   try {
     const tournament = new Tournament({
       name,
       startDate,
       endDate,
+      registrationStart,
+      registrationEnd,
+      description,
       location,
       organizer: req.user._id
     });

@@ -29,7 +29,9 @@
                     <div class="card-body">
                         <h4 class="card-title">Details</h4>
                         <p class="card-text"><strong>Description:</strong> <%= tournament.description %></p>
-                        <p class="card-text"><strong>Date:</strong> <%= tournament.date.toLocaleDateString() %></p>
+                        <p class="card-text"><strong>Start date:</strong> <%= tournament.startDate.toLocaleDateString() %></p>
+                        <p class="card-text"><strong>Registration start date:</strong> <%= tournament.registrationStartDate.toLocaleDateString() %></p>
+                        <p class="card-text"><strong>Registration end date:</strong> <%= tournament.registrationEndDate.toLocaleDateString() %></p>
                         <p class="card-text"><strong>Location:</strong> <%= tournament.location %></p>
                         
                         <h3 class="mt-4">🏆 Participating Clubs:</h3>
@@ -46,7 +48,7 @@
             <p>No clubs have joined yet.</p>
         <% } %>
                         <!-- Button to join or register for the tournament -->
-                        <a href="#" class="btn btn-primary btn-lg">Join Tournament</a>
+                        <a href="#" class="btn btn-primary btn-lg">View tournament details</a>
                         <a href="/tournaments/<%= tournament.id %>/add-club" class="btn btn-success btn-lg">Participate</a>
                     </div>
                 </div>
