@@ -20,11 +20,11 @@ module.exports.registerUser = async (req, res, next) => {
     }
 };
 
-module.exports.renderLogin = (req,res) => {
+exports.renderLogin = (req,res) => {
     res.render('auth/login')
 };
 
-module.exports.loginUser = (req, res) => {
+exports.loginUser = (req, res) => {
     req.flash('success', 'welcome back!');
     const redirectUrl = res.locals.returnTo || '/';
     delete  req.session.returnTo;
