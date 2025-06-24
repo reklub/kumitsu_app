@@ -1,5 +1,7 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
+const Schema = mongoose.Schema; 
+const passportLocalMongoose = require('passport-local-mongoose');
 
 const userSchema = new mongoose.Schema({
   name: {
@@ -17,12 +19,12 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['organizer', 'participant'],
-    default: 'participant'
+    enum: ['admin', 'manager', 'user'],
+    default: 'user'
   }
 });
 
-// Haszowanie hasła przed zapisaniem w bazie
+/* // Haszowanie hasła przed zapisaniem w bazie
 userSchema.pre('save', async function(next) {
   if (!this.isModified('password')) return next();
   const salt = await bcrypt.genSalt(10);
@@ -33,7 +35,9 @@ userSchema.pre('save', async function(next) {
 // Porównywanie hasła
 userSchema.methods.matchPassword = async function(password) {
   return await bcrypt.compare(password, this.password);
-};
+}; */
+
+userSchema.plugin(passportLocalMongoose);
 
 const User = mongoose.model('User', userSchema);
 
