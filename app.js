@@ -11,11 +11,10 @@ const User = require('./models/User');
 
 const passport = require('passport');
 
-
-
 //const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/users')
 const tournaments = require('./routes/tournaments');
+const ExpressError = require('./utils/expressError')
 
 // Middleware
 //app.use(express.json());
@@ -52,10 +51,9 @@ const sessionConfig = {
 
 
 
+app.use(session(sessionConfig))
 app.use(passport.initialize());
 app.use(passport.session());
-
-app.use(session(sessionConfig))
 
 app.use(flash());
 
@@ -63,8 +61,6 @@ passport.use(new LocalStrategy(User.authenticate()));
 
 passport.serializeUser(User.serializeUser());
 passport.deserializeUser(User.deserializeUser());
-
-
 
 app.use((req,res,next) => {
     res.locals.currentUser = req.user;
@@ -80,11 +76,11 @@ app.all('*', (req,res,next) => {
     next(new ExpressError('Page Not Found', 404))
 })
 
-app.use((err, req, res, next) => {
+/* app.use((err, req, res, next) => {
     const {statusCode=500} = err;
     if (!err.message) err.message = 'Oh no, something went wrong'
     res.status(statusCode).render('error', {err});
-});
+}); */
 
 // Port
 const PORT = process.env.PORT || 5000;
