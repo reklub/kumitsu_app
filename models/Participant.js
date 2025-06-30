@@ -23,7 +23,8 @@ const participantSchema = new mongoose.Schema({
     required: true
   },
   beltRank: {
-    type: String,
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'BeltRank',
     required: true
   },
   club: {
@@ -31,16 +32,18 @@ const participantSchema = new mongoose.Schema({
     ref: 'Club',
     required: true
   },
-  /* tournament: {
+  tournament: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Tournament',
     required: true
-  }, */
+  },
   category: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Category',
     default: null
-  }
+  },
+  isActive: { type: Boolean, default: true },
+  registeredAt: { type: Date, default: Date.now }
 });
 
 module.exports = mongoose.model('Participant', participantSchema);

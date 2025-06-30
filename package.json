@@ -11,6 +11,8 @@
   "description": "",
   "dependencies": {
     "bcryptjs": "^3.0.0",
+    "brackets-json-db": "^1.0.2",
+    "brackets-manager": "^1.6.4",
     "connect-flash": "^0.1.1",
     "dotenv": "^16.4.7",
     "ejs-mate": "^4.0.0",
@@ -21,6 +23,7 @@
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.10.0",
     "passport": "^0.7.0",
-    "passport-local-mongoose": "^8.0.0"
+    "passport-local-mongoose": "^8.0.0",
+    "sortablejs": "^1.15.6"
   }
 }
