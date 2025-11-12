@@ -11,15 +11,16 @@ const User = require('./models/User');
 
 const passport = require('passport');
 
-//const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/users')
 const tournaments = require('./routes/tournaments');
+const tournamentManagement = require('./routes/tournamentManagement');
+const adminRoutes = require('./routes/admin');
+const categories = require('./routes/categories');
+const matches = require('./routes/matches');
+const participants = require('./routes/participants');
 const ExpressError = require('./utils/expressError')
 
 // Middleware
-//app.use(express.json());
-
-//app.use('/clubs', clubs)
 
 // Połączenie z MongoDB
 mongoose.connect('mongodb://localhost:27017/tournaments', {
@@ -71,16 +72,22 @@ app.use((req,res,next) => {
 
 app.use('/', userRoutes);
 app.use('/tournaments', tournaments)
+app.use('/admin/tournaments', tournamentManagement)
+app.use('/admin', adminRoutes)
+app.use('/', categories)
+app.use('/', matches)
+app.use('/', participants)
 
 app.all('*', (req,res,next) => {
     next(new ExpressError('Page Not Found', 404))
 })
 
-/* app.use((err, req, res, next) => {
-    const {statusCode=500} = err;
+// Global error handler
+app.use((err, req, res, next) => {
+    const {statusCode = 500} = err;
     if (!err.message) err.message = 'Oh no, something went wrong'
     res.status(statusCode).render('error', {err});
-}); */
+});
 
 // Port
 const PORT = process.env.PORT || 5000;

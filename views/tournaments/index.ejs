@@ -26,8 +26,14 @@
         </div>
 
         <!-- Add Tournament Button -->
+        <% if (typeof currentUser !== 'undefined' && currentUser) { %>
         <div class="text-center mt-4">
             <a href="/tournaments/create-tournament" class="btn btn-success btn-lg">Create New Tournament</a>
         </div>
+        <% } else { %>
+        <div class="text-center mt-4">
+            <a href="/login" class="btn btn-success btn-lg">Zaloguj się, aby utworzyć turniej</a>
+        </div>
+        <% } %>
     </div>
 

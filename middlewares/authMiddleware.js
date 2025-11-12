@@ -1,5 +1,3 @@
-const jwt = require('jsonwebtoken');
-
 const storeReturnTo = (req, res, next) => {
     if (req.session.returnTo) {
         res.locals.returnTo = req.session.returnTo;
@@ -8,19 +6,12 @@ const storeReturnTo = (req, res, next) => {
 }
 
 const authMiddleware = (req, res, next) => {
-  const token = req.header('Authorization')?.replace('Bearer ', '');
-
-  if (!token) {
-    return res.status(401).json({ error: 'Nieautoryzowany dostęp' });
+  if (!req.isAuthenticated()) {
+    req.session.returnTo = req.originalUrl;
+    req.flash('error', 'Musisz być zalogowany, aby uzyskać dostęp do tej strony');
+    return res.redirect('/login');
   }
-
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded;
-    next();
-  } catch (error) {
-    res.status(401).json({ error: 'Nieautoryzowany dostęp' });
-  }
+  next();
 };
 
 module.exports = authMiddleware;

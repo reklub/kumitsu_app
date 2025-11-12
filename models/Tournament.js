@@ -29,17 +29,29 @@ const tournamentSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  rank: {
+    type: String,
+    required: false
+  },
+  ticketPrice: {
+    type: Number,
+    required: false,
+    default: 0
+  },
+  startTime: {
+    type: String,
+    required: false
+  },
+  endTime: {
+    type: String,
+    required: false
+  },
   organizer: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: false
   },
   clubs: [{ type: mongoose.Schema.Types.ObjectId, ref: "Club" }],
-  status: {
-    type: String,
-    enum: ['draft', 'registration_open', 'registration_closed', 'groups_generated', 'brackets_generated', 'in_progress', 'completed'],
-    default: 'draft'
-  },
   tournamentType: {
     type: String,
     enum: ['single_elimination', 'double_elimination', 'round_robin', 'swiss'],
@@ -57,6 +69,10 @@ const tournamentSchema = new mongoose.Schema({
   matches: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Match'
+  }],
+  images: [{
+    url: String,
+    filename: String
   }]
 });
 

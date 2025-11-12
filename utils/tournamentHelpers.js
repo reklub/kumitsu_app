@@ -1,22 +1,10 @@
 const BeltRank = require('../models/BeltRank');
 
-// Funkcje pomocnicze dla statusu turnieju
-const statusConfig = {
-  'draft': { text: 'Projekt', color: 'secondary' },
-  'registration_open': { text: 'Rejestracja otwarta', color: 'success' },
-  'registration_closed': { text: 'Rejestracja zamknięta', color: 'warning' },
-  'groups_generated': { text: 'Grupy wygenerowane', color: 'info' },
-  'brackets_generated': { text: 'Drabinki wygenerowane', color: 'primary' },
-  'in_progress': { text: 'W trakcie', color: 'danger' },
-  'completed': { text: 'Zakończony', color: 'dark' }
-};
-
-function getStatusText(status) {
-  return statusConfig[status]?.text || 'Nieznany';
-}
-
-function getStatusColor(status) {
-  return statusConfig[status]?.color || 'secondary';
+// Function to format gender display
+function getGenderText(gender) {
+  if (gender === 'male') return 'Male';
+  if (gender === 'female') return 'Female';
+  return gender; // fallback to original value
 }
 
 // Funkcja do pobierania kolorów pasów z bazy
@@ -43,8 +31,7 @@ async function getAllBeltRanks() {
 }
 
 module.exports = {
-  getStatusText,
-  getStatusColor,
   getBeltColors,
-  getAllBeltRanks
+  getAllBeltRanks,
+  getGenderText
 };

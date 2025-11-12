@@ -3,11 +3,6 @@
 <div class="container mt-4">
   <div class="d-flex justify-content-between align-items-center mb-4">
     <h2>Zarządzanie turniejem: <%= tournament.name %></h2>
-    <div>
-      <span class="badge badge-<%= getStatusColor(tournament.status) %> badge-lg">
-        <%= getStatusText(tournament.status) %>
-      </span>
-    </div>
   </div>
   
   <!-- Status i informacje podstawowe -->
@@ -18,16 +13,11 @@
           <i class="fas fa-info-circle"></i> Informacje
         </div>
         <div class="card-body">
-          <p><strong>Status:</strong> 
-            <span class="badge badge-<%= getStatusColor(tournament.status) %>">
-              <%= getStatusText(tournament.status) %>
-            </span>
-          </p>
           <p><strong>Data rozpoczęcia:</strong> 
-            <%= tournament.tournamentStart ? tournament.tournamentStart.toLocaleDateString('pl-PL') : 'Nie ustawiono' %>
+            <%= tournament.startDate ? tournament.startDate.toLocaleDateString('pl-PL') : 'Nie ustawiono' %>
           </p>
           <p><strong>Data zakończenia:</strong> 
-            <%= tournament.tournamentEnd ? tournament.tournamentEnd.toLocaleDateString('pl-PL') : 'Nie ustawiono' %>
+            <%= tournament.endDate ? tournament.endDate.toLocaleDateString('pl-PL') : 'Nie ustawiono' %>
           </p>
           <p><strong>Typ turnieju:</strong> <%= tournament.tournamentType || 'Nie ustawiono' %></p>
           <p><strong>Uczestnicy:</strong> 
@@ -40,6 +30,23 @@
       </div>
     </div>
     
+    <div class="col-md-4">
+      <div class="card">
+        <div class="card-header">
+          <i class="fas fa-chart-bar"></i> Statystyki
+        </div>
+        <div class="card-body">
+          <div id="tournament-stats">
+            <p><strong>Kategorie:</strong> <span id="categories-count">-</span></p>
+            <p><strong>Mecze:</strong> <span id="total-matches">-</span></p>
+            <p><strong>Zakończone:</strong> <span id="completed-matches">-</span></p>
+            <p><strong>W trakcie:</strong> <span id="in-progress-matches">-</span></p>
+            <p><strong>Zaplanowane:</strong> <span id="scheduled-matches">-</span></p>
+          </div>
+        </div>
+      </div>
+    </div>
+    
     <div class="col-md-8">
       <div class="card">
         <div class="card-header">
@@ -47,37 +54,124 @@
         </div>
         <div class="card-body">
           <div class="btn-group-vertical w-100">
-            
-            <% if (tournament.status === 'registration_open') { %>
-              <button class="btn btn-warning mb-2" onclick="closeRegistration()">
-                <i class="fas fa-lock"></i> Zamknij rejestrację
-              </button>
-            <% } %>
-            
-            <% if (tournament.status === 'registration_closed') { %>
-              <button class="btn btn-primary mb-2" onclick="generateGroups()">
-                <i class="fas fa-users"></i> Wygeneruj grupy
-              </button>
-            <% } %>
-            
-            <% if (tournament.status === 'groups_generated') { %>
-              <button class="btn btn-success mb-2" onclick="generateBrackets()">
-                <i class="fas fa-sitemap"></i> Wygeneruj drabinki
-              </button>
-            <% } %>
-            
-            <% if (tournament.status === 'brackets_generated') { %>
-              <button class="btn btn-danger mb-2" onclick="startTournament()">
-                <i class="fas fa-play"></i> Rozpocznij turniej
-              </button>
-            <% } %>
-            
+            <button class="btn btn-info mb-2" onclick="prepareTournament()">
+              <i class="fas fa-cogs"></i> Przygotuj turniej
+            </button>
+            <button class="btn btn-danger mb-2" onclick="startTournament()">
+              <i class="fas fa-play"></i> Rozpocznij turniej
+            </button>
+            <a href="/admin/tournaments/<%= tournament._id %>/live" class="btn btn-info mb-2">
+              <i class="fas fa-tv"></i> Widok na żywo
+            </a>
+            <a href="/admin/tournaments/<%= tournament._id %>/brackets" class="btn btn-success mb-2">
+              <i class="fas fa-trophy"></i> Zobacz wyniki
+            </a>
           </div>
         </div>
       </div>
     </div>
   </div>
   
+  <!-- Category Management Section -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header">
+          <i class="fas fa-tags"></i> Zarządzanie kategoriami
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-6">
+              <h5>Utwórz nową kategorię</h5>
+              <form action="/admin/tournaments/<%= tournament._id %>/categories" method="POST">
+                <div class="row">
+                  <div class="col-md-6">
+                    <div class="form-group">
+                      <label for="categoryName">Nazwa kategorii</label>
+                      <input type="text" class="form-control" id="categoryName" name="name" required>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="form-group">
+                      <label for="bracketType">Typ drabinki</label>
+                      <select class="form-control" id="bracketType" name="bracketType">
+                        <option value="single_elimination">Pojedyncza eliminacja</option>
+                        <option value="double_elimination">Podwójna eliminacja</option>
+                        <option value="round_robin">Każdy z każdym</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="col-md-3">
+                    <div class="form-group">
+                      <label for="ageMin">Wiek min</label>
+                      <input type="number" class="form-control" id="ageMin" name="ageMin">
+                    </div>
+                  </div>
+                  <div class="col-md-3">
+                    <div class="form-group">
+                      <label for="ageMax">Wiek max</label>
+                      <input type="number" class="form-control" id="ageMax" name="ageMax">
+                    </div>
+                  </div>
+                  <div class="col-md-3">
+                    <div class="form-group">
+                      <label for="weightMin">Waga min (kg)</label>
+                      <input type="number" step="0.1" class="form-control" id="weightMin" name="weightMin">
+                    </div>
+                  </div>
+                  <div class="col-md-3">
+                    <div class="form-group">
+                      <label for="weightMax">Waga max (kg)</label>
+                      <input type="number" step="0.1" class="form-control" id="weightMax" name="weightMax">
+                    </div>
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="col-md-6">
+                    <div class="form-group">
+                      <label for="gender">Płeć</label>
+                      <select class="form-control" id="gender" name="gender">
+                        <option value="">Wszystkie</option>
+                        <option value="male">Mężczyźni</option>
+                        <option value="female">Kobiety</option>
+                        <option value="mixed">Mieszane</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="form-group">
+                      <label for="beltRanks">Pasy (oddzielone przecinkami)</label>
+                      <input type="text" class="form-control" id="beltRanks" name="beltRanks" placeholder="np. biały, żółty, pomarańczowy">
+                    </div>
+                  </div>
+                </div>
+                <button type="submit" class="btn btn-primary">
+                  <i class="fas fa-plus"></i> Utwórz kategorię
+                </button>
+              </form>
+            </div>
+            <div class="col-md-6">
+              <h5>Akcje kategorii</h5>
+              <div class="btn-group-vertical w-100">
+                <button class="btn btn-info mb-2" onclick="autoAssignParticipants()">
+                  <i class="fas fa-magic"></i> Automatyczne przypisanie uczestników
+                </button>
+                <button class="btn btn-warning mb-2" onclick="generateAllGroups()">
+                  <i class="fas fa-users"></i> Wygeneruj grupy dla wszystkich kategorii
+                </button>
+                <button class="btn btn-success mb-2" onclick="generateAllBrackets()">
+                  <i class="fas fa-sitemap"></i> Wygeneruj drabinki dla wszystkich kategorii
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Sekcja uczestników z kolorami pasów -->
   <div class="row">
     <div class="col-12">
@@ -97,7 +191,8 @@
                       <h6 class="card-title"><%= participant.name %></h6>
                       <p class="card-text">
                         <small class="text-muted">
-                          <i class="fas fa-home"></i> <%= participant.club || 'Brak klubu' %>
+                          <i class="fas fa-home"></i> <%= participant.club || 'Brak klubu' %><br>
+                          <i class="fas fa-user"></i> <%= getGenderText(participant.gender) %>
                         </small>
                       </p>
                       <% if (participant.beltRank) { %>
@@ -119,6 +214,77 @@
     </div>
   </div>
   
+  <!-- Categories Section -->
+  <div class="row mt-4">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header">
+          <i class="fas fa-tags"></i> Kategorie turnieju
+        </div>
+        <div class="card-body">
+          <div id="categories-container">
+            <% if (categories && categories.length > 0) { %>
+              <div class="row">
+                <% categories.forEach(category => { %>
+                  <div class="col-md-6 mb-3">
+                    <div class="card category-card">
+                      <div class="card-header">
+                        <h6><%= category.name %></h6>
+                        <small class="text-muted">Typ: <%= category.bracketType %></small>
+                      </div>
+                      <div class="card-body">
+                        <div class="category-criteria">
+                          <% if (category.ageMin || category.ageMax) { %>
+                            <small class="text-muted">Wiek: <%= category.ageMin || 'bez limitu' %> - <%= category.ageMax || 'bez limitu' %></small><br>
+                          <% } %>
+                          <% if (category.weightMin || category.weightMax) { %>
+                            <small class="text-muted">Waga: <%= category.weightMin || 'bez limitu' %> - <%= category.weightMax || 'bez limitu' %> kg</small><br>
+                          <% } %>
+                          <% if (category.gender) { %>
+                            <small class="text-muted">Płeć: <%= category.gender %></small><br>
+                          <% } %>
+                        </div>
+                        <div class="category-participants mt-2">
+                          <strong>Uczestnicy (<%= category.participants ? category.participants.length : 0 %>):</strong>
+                          <% if (category.participants && category.participants.length > 0) { %>
+                            <div class="participant-list">
+                              <% category.participants.forEach(participant => { %>
+                                <div class="participant-item d-flex align-items-center mb-1">
+                                  <% if (participant.beltRank) { %>
+                                    <div class="belt-color me-2" 
+                                         style="width: 12px; height: 12px; background-color: <%= participant.beltRank.color %>; border: 1px solid #ccc; border-radius: 2px;">
+                                    </div>
+                                  <% } %>
+                                  <span><%= participant.firstName %> <%= participant.lastName %></span>
+                                </div>
+                              <% }) %>
+                            </div>
+                          <% } else { %>
+                            <p class="text-muted">Brak uczestników</p>
+                          <% } %>
+                        </div>
+                        <div class="category-actions mt-2">
+                          <button class="btn btn-sm btn-warning" onclick="generateCategoryGroups('<%= category._id %>')">
+                            <i class="fas fa-users"></i> Grupy
+                          </button>
+                          <button class="btn btn-sm btn-success" onclick="generateCategoryBrackets('<%= category._id %>')">
+                            <i class="fas fa-sitemap"></i> Drabinka
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                <% }) %>
+              </div>
+            <% } else { %>
+              <p class="text-muted">Brak utworzonych kategorii. Utwórz kategorię powyżej.</p>
+            <% } %>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Sekcja grup (jeśli wygenerowane) -->
   <% if (tournament.groups && tournament.groups.length > 0) { %>
     <div class="row mt-4">
@@ -193,9 +359,206 @@
 }
 </style>
 
-<!-- Skrypty JavaScript pozostają bez zmian -->
+<!-- Skrypty JavaScript -->
 <script>
-// ... (poprzednie funkcje JavaScript)
+// Auto-assign participants to categories
+function autoAssignParticipants() {
+  if (confirm('Czy na pewno chcesz automatycznie przypisać wszystkich uczestników do kategorii?')) {
+    fetch(`/admin/tournaments/<%= tournament._id %>/auto-assign`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    })
+    .then(response => {
+      if (response.ok) {
+        location.reload();
+      } else {
+        alert('Błąd podczas automatycznego przypisywania uczestników');
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      alert('Błąd podczas automatycznego przypisywania uczestników');
+    });
+  }
+}
+
+// Generate groups for all categories
+function generateAllGroups() {
+  if (confirm('Czy na pewno chcesz wygenerować grupy dla wszystkich kategorii?')) {
+    // This would need to be implemented to get all categories and generate groups
+    alert('Funkcja w trakcie implementacji');
+  }
+}
+
+// Generate brackets for all categories
+function generateAllBrackets() {
+  if (confirm('Czy na pewno chcesz wygenerować drabinki dla wszystkich kategorii?')) {
+    // This would need to be implemented to get all categories and generate brackets
+    alert('Funkcja w trakcie implementacji');
+  }
+}
+
+// Prepare tournament
+function prepareTournament() {
+  if (confirm('Czy na pewno chcesz przygotować turniej? To wygeneruje wszystkie drabinki i grupy.')) {
+    fetch(`/admin/tournaments/<%= tournament._id %>/prepare`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    })
+    .then(response => {
+      if (response.ok) {
+        location.reload();
+      } else {
+        alert('Błąd podczas przygotowywania turnieju');
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      alert('Błąd podczas przygotowywania turnieju');
+    });
+  }
+}
+
+// Generate groups
+function generateGroups() {
+  if (confirm('Czy na pewno chcesz wygenerować grupy?')) {
+    fetch(`/admin/tournaments/<%= tournament._id %>/generate-groups`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    })
+    .then(response => {
+      if (response.ok) {
+        location.reload();
+      } else {
+        alert('Błąd podczas generowania grup');
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      alert('Błąd podczas generowania grup');
+    });
+  }
+}
+
+// Generate brackets
+function generateBrackets() {
+  if (confirm('Czy na pewno chcesz wygenerować drabinki?')) {
+    fetch(`/admin/tournaments/<%= tournament._id %>/generate-brackets`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    })
+    .then(response => {
+      if (response.ok) {
+        location.reload();
+      } else {
+        alert('Błąd podczas generowania drabinek');
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      alert('Błąd podczas generowania drabinek');
+    });
+  }
+}
+
+// Start tournament
+function startTournament() {
+  if (confirm('Czy na pewno chcesz rozpocząć turniej? To akcja nieodwracalna!')) {
+    fetch(`/admin/tournaments/<%= tournament._id %>/start`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    })
+    .then(response => {
+      if (response.ok) {
+        window.location.href = `/admin/tournaments/<%= tournament._id %>/live`;
+      } else {
+        alert('Błąd podczas rozpoczynania turnieju');
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      alert('Błąd podczas rozpoczynania turnieju');
+    });
+  }
+}
+
+// Generate groups for a specific category
+function generateCategoryGroups(categoryId) {
+  if (confirm('Czy na pewno chcesz wygenerować grupy dla tej kategorii?')) {
+    fetch(`/admin/tournaments/categories/${categoryId}/generate-groups`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    })
+    .then(response => {
+      if (response.ok) {
+        location.reload();
+      } else {
+        alert('Błąd podczas generowania grup');
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      alert('Błąd podczas generowania grup');
+    });
+  }
+}
+
+// Generate brackets for a specific category
+function generateCategoryBrackets(categoryId) {
+  if (confirm('Czy na pewno chcesz wygenerować drabinkę dla tej kategorii?')) {
+    fetch(`/admin/tournaments/categories/${categoryId}/generate-brackets`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    })
+    .then(response => {
+      if (response.ok) {
+        location.reload();
+      } else {
+        alert('Błąd podczas generowania drabinki');
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      alert('Błąd podczas generowania drabinki');
+    });
+  }
+}
+
+// Load tournament statistics
+function loadTournamentStats() {
+  fetch(`/admin/tournaments/<%= tournament._id %>/stats`)
+    .then(response => response.json())
+    .then(data => {
+      document.getElementById('categories-count').textContent = data.categoriesCount;
+      document.getElementById('total-matches').textContent = data.totalMatches;
+      document.getElementById('completed-matches').textContent = data.completedMatches;
+      document.getElementById('in-progress-matches').textContent = data.inProgressMatches;
+      document.getElementById('scheduled-matches').textContent = data.scheduledMatches;
+    })
+    .catch(error => {
+      console.error('Error loading stats:', error);
+    });
+}
+
+// Load stats when page loads
+document.addEventListener('DOMContentLoaded', function() {
+  loadTournamentStats();
+});
 </script>
 
 <%- include('../partials/footer') %>
+

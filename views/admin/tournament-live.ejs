@@ -1,0 +1,240 @@
+<%- include('../partials/header') %>
+
+<div class="container-fluid mt-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-trophy"></i> Turniej na żywo: <%= tournament.name %></h2>
+    <div>
+      <a href="/admin/tournaments/<%= tournament._id %>/brackets" class="btn btn-info">
+        <i class="fas fa-sitemap"></i> Zobacz drabinki
+      </a>
+      <a href="/admin/tournaments/<%= tournament._id %>/manage" class="btn btn-secondary">
+        <i class="fas fa-cog"></i> Zarządzanie
+      </a>
+    </div>
+  </div>
+
+  <!-- Current Matches Section -->
+  <div class="row">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header bg-primary text-white">
+          <i class="fas fa-play"></i> Aktualne mecze
+        </div>
+        <div class="card-body">
+          <div id="current-matches">
+            <!-- Current matches will be loaded here -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Categories and Matches -->
+  <div class="row mt-4">
+    <% categories.forEach(category => { %>
+      <div class="col-md-6 mb-4">
+        <div class="card">
+          <div class="card-header">
+            <h5><i class="fas fa-tag"></i> <%= category.name %></h5>
+            <small class="text-muted">Typ: <%= category.bracketType %></small>
+          </div>
+          <div class="card-body">
+            <div class="matches-container" data-category="<%= category._id %>">
+              <% if (category.matches && category.matches.length > 0) { %>
+                <% category.matches.forEach(match => { %>
+                  <div class="match-card mb-3 p-3 border rounded" data-match="<%= match._id %>">
+                    <div class="row align-items-center">
+                      <div class="col-md-4">
+                        <div class="participant-info">
+                          <strong><%= match.participant1 ? match.participant1.firstName + ' ' + match.participant1.lastName : 'TBD' %></strong>
+                          <% if (match.participant1 && match.participant1.club) { %>
+                            <br><small class="text-muted"><%= match.participant1.club.clubName %></small>
+                          <% } %>
+                        </div>
+                      </div>
+                      <div class="col-md-4 text-center">
+                        <div class="match-info">
+                          <span class="badge badge-<%= match.status === 'completed' ? 'success' : match.status === 'in_progress' ? 'warning' : 'secondary' %>">
+                            <%= match.status === 'completed' ? 'Zakończony' : match.status === 'in_progress' ? 'W trakcie' : 'Zaplanowany' %>
+                          </span>
+                          <% if (match.scheduledTime) { %>
+                            <br><small><%= new Date(match.scheduledTime).toLocaleTimeString() %></small>
+                          <% } %>
+                          <% if (match.court) { %>
+                            <br><small>Boisko: <%= match.court %></small>
+                          <% } %>
+                        </div>
+                      </div>
+                      <div class="col-md-4">
+                        <div class="participant-info text-right">
+                          <strong><%= match.participant2 ? match.participant2.firstName + ' ' + match.participant2.lastName : 'TBD' %></strong>
+                          <% if (match.participant2 && match.participant2.club) { %>
+                            <br><small class="text-muted"><%= match.participant2.club.clubName %></small>
+                          <% } %>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <% if (match.status === 'scheduled') { %>
+                      <div class="row mt-2">
+                        <div class="col-12 text-center">
+                          <button class="btn btn-primary btn-sm" onclick="startMatch('<%= match._id %>')">
+                            <i class="fas fa-play"></i> Rozpocznij mecz
+                          </button>
+                        </div>
+                      </div>
+                    <% } else if (match.status === 'in_progress') { %>
+                      <div class="row mt-2">
+                        <div class="col-12">
+                          <div class="score-input">
+                            <div class="row">
+                              <div class="col-4">
+                                <label>Wynik 1:</label>
+                                <input type="number" class="form-control form-control-sm" id="score1_<%= match._id %>" value="<%= match.score1 || 0 %>">
+                              </div>
+                              <div class="col-4">
+                                <label>Wynik 2:</label>
+                                <input type="number" class="form-control form-control-sm" id="score2_<%= match._id %>" value="<%= match.score2 || 0 %>">
+                              </div>
+                              <div class="col-4">
+                                <label>Zwycięzca:</label>
+                                <select class="form-control form-control-sm" id="winner_<%= match._id %>">
+                                  <option value="">Wybierz zwycięzcę</option>
+                                  <% if (match.participant1) { %>
+                                    <option value="<%= match.participant1._id %>"><%= match.participant1.firstName %> <%= match.participant1.lastName %></option>
+                                  <% } %>
+                                  <% if (match.participant2) { %>
+                                    <option value="<%= match.participant2._id %>"><%= match.participant2.firstName %> <%= match.participant2.lastName %></option>
+                                  <% } %>
+                                </select>
+                              </div>
+                            </div>
+                            <div class="row mt-2">
+                              <div class="col-12 text-center">
+                                <button class="btn btn-success btn-sm" onclick="finishMatch('<%= match._id %>')">
+                                  <i class="fas fa-check"></i> Zakończ mecz
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    <% } else if (match.status === 'completed') { %>
+                      <div class="row mt-2">
+                        <div class="col-12 text-center">
+                          <div class="result-info">
+                            <strong>Wynik: <%= match.score1 %> - <%= match.score2 %></strong>
+                            <% if (match.winner) { %>
+                              <br><span class="text-success">Zwycięzca: <%= match.winner.firstName %> <%= match.winner.lastName %></span>
+                            <% } %>
+                          </div>
+                        </div>
+                      </div>
+                    <% } %>
+                  </div>
+                <% }) %>
+              <% } else { %>
+                <p class="text-muted">Brak meczów w tej kategorii</p>
+              <% } %>
+            </div>
+          </div>
+        </div>
+      </div>
+    <% }) %>
+  </div>
+</div>
+
+<style>
+.match-card {
+  transition: all 0.3s ease;
+}
+
+.match-card:hover {
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.participant-info {
+  min-height: 50px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.score-input {
+  background-color: #f8f9fa;
+  padding: 15px;
+  border-radius: 5px;
+}
+
+.result-info {
+  background-color: #d4edda;
+  padding: 10px;
+  border-radius: 5px;
+  border: 1px solid #c3e6cb;
+}
+</style>
+
+<script>
+// Start a match
+function startMatch(matchId) {
+  fetch(`/admin/tournaments/matches/${matchId}/start`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    }
+  })
+  .then(response => {
+    if (response.ok) {
+      location.reload();
+    } else {
+      alert('Błąd podczas rozpoczynania meczu');
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    alert('Błąd podczas rozpoczynania meczu');
+  });
+}
+
+// Finish a match
+function finishMatch(matchId) {
+  const score1 = document.getElementById(`score1_${matchId}`).value;
+  const score2 = document.getElementById(`score2_${matchId}`).value;
+  const winner = document.getElementById(`winner_${matchId}`).value;
+
+  if (!winner) {
+    alert('Proszę wybrać zwycięzcę meczu');
+    return;
+  }
+
+  fetch(`/admin/tournaments/matches/${matchId}/result`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      score1: parseInt(score1),
+      score2: parseInt(score2),
+      winnerId: winner
+    })
+  })
+  .then(response => {
+    if (response.ok) {
+      location.reload();
+    } else {
+      alert('Błąd podczas zakończenia meczu');
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    alert('Błąd podczas zakończenia meczu');
+  });
+}
+
+// Auto-refresh every 30 seconds
+setInterval(() => {
+  location.reload();
+}, 30000);
+</script>
+
+<%- include('../partials/footer') %>

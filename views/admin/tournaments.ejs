@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zarządzanie Turniejami - Kumitsu Tournament Management</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <%- include('../partials/header') %>
+    
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-12">
+                <h1>Zarządzanie Turniejami</h1>
+                <p class="lead">Wszystkie turnieje w systemie</p>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5>Lista Turniejów</h5>
+                        <a href="/tournaments/create-tournament" class="btn btn-success">Utwórz Nowy Turniej</a>
+                    </div>
+                    <div class="card-body">
+                        <% if (tournaments && tournaments.length > 0) { %>
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Nazwa</th>
+                                            <th>Data Rozpoczęcia</th>
+                                            <th>Lokalizacja</th>
+                                            <th>Akcje</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <% tournaments.forEach(tournament => { %>
+                                            <tr>
+                                                <td><%= tournament.name %></td>
+                                                <td><%= new Date(tournament.startDate).toLocaleDateString() %></td>
+                                                <td><%= tournament.location %></td>
+                                                <td>
+                                                    <div class="btn-group" role="group">
+                                                        <a href="/tournaments/<%= tournament._id %>" class="btn btn-sm btn-outline-primary">Zobacz</a>
+                                                        <a href="/admin/tournaments/<%= tournament._id %>/manage" class="btn btn-sm btn-outline-success">Zarządzaj</a>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        <% }); %>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <% } else { %>
+                            <div class="text-center py-4">
+                                <p class="text-muted">Brak turniejów w systemie</p>
+                                <a href="/tournaments/create-tournament" class="btn btn-primary">Utwórz Pierwszy Turniej</a>
+                            </div>
+                        <% } %>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <%- include('../partials/footer') %>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

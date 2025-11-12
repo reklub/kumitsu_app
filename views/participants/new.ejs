@@ -45,14 +45,9 @@
                 <label for="beltRank" class="form-label">Belt Rank</label>
                 <select class="form-control" id="beltRank" name="beltRank" required>
                     <option value="">Select Belt Rank</option>
-                    <option value="white">White</option>
-                    <option value="yellow">Yellow</option>
-                    <option value="orange">Orange</option>
-                    <option value="green">Green</option>
-                    <option value="blue">Blue</option>
-                    <option value="purple">Purple</option>
-                    <option value="brown">Brown</option>
-                    <option value="black">Black</option>
+                    <% beltRanks.forEach(belt => { %>
+                        <option value="<%= belt.rank %>"><%= belt.description || belt.rank.charAt(0).toUpperCase() + belt.rank.slice(1) %></option>
+                    <% }); %>
                 </select>
             </div>
             

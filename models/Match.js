@@ -21,4 +21,4 @@ const MatchSchema = new mongoose.Schema({
   actualEndTime: Date
 });
 
-module.exports = mongoose.model('Match', matchSchema);
+module.exports = mongoose.model('Match', MatchSchema);

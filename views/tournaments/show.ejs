@@ -1,19 +1,23 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><%= tournament.name %> - Tournament Details</title>
-    
-    <!-- Bootstrap CSS (from CDN) -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    
+<% layout('./layouts/boilerplate') %>
+
     <!-- Custom CSS -->
     <link href="/stylesheets/tournamentViewStyle.css" rel="stylesheet">
-</head>
-<body>
 
     <div class="container mt-5">
+        <!-- Flash Messages -->
+        <% if (typeof error !== 'undefined' && error && error.length > 0) { %>
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <%= error[0] %>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        <% } %>
+        <% if (typeof success !== 'undefined' && success && success.length > 0) { %>
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                <%= success[0] %>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        <% } %>
+        
         <!-- Tournament Details Header -->
         <div class="row mb-4">
             <div class="col text-center">
@@ -40,16 +44,74 @@
                                 <% tournament.clubs.forEach(club => { %>
                                 <li>
                                 <i class="fas fa-users"></i> <%= club.clubName %> 
-                                <a href="/tournaments/<%= tournament.id %>/club/<%= club.id %>">Manage</a>
+                                <a href="/tournaments/<%= tournament._id %>/club/<%= club._id %>">Manage</a>
                                 </li>
                 <% }); %>
             </ul>
         <% } else { %>
             <p>No clubs have joined yet.</p>
         <% } %>
-                        <!-- Button to join or register for the tournament -->
-                        <a href="#" class="btn btn-primary btn-lg">View tournament details</a>
-                        <a href="/tournaments/<%= tournament.id %>/add-club" class="btn btn-success btn-lg">Participate</a>
+
+                        <!-- Admin Controls (only show if user is logged in) -->
+                        <% if (typeof currentUser !== 'undefined' && currentUser) { %>
+                        <div class="mt-4">
+                            <h5>Tournament Management</h5>
+                            <div class="btn-group-vertical w-100">
+                                <button type="button" class="btn btn-warning mb-2" data-bs-toggle="modal" data-bs-target="#editTournamentModal" onclick="loadEditTournamentForm('<%= tournament._id %>')">
+                                    <i class="fas fa-edit"></i> Edit Tournament
+                                </button>
+                                <a href="/admin/tournaments/<%= tournament._id %>/manage" class="btn btn-info mb-2">
+                                    <i class="fas fa-cog"></i> Full Management Panel
+                                </a>
+                                
+                                <button class="btn btn-info mb-2" onclick="prepareTournament('<%= tournament._id %>')">
+                                    <i class="fas fa-cogs"></i> Prepare Tournament
+                                </button>
+                                <button class="btn btn-danger mb-2" onclick="startTournament('<%= tournament._id %>')">
+                                    <i class="fas fa-play"></i> Start Tournament
+                                </button>
+                                <a href="/admin/tournaments/<%= tournament._id %>/live" class="btn btn-info mb-2">
+                                    <i class="fas fa-tv"></i> Live View
+                                </a>
+                                <a href="/admin/tournaments/<%= tournament._id %>/brackets" class="btn btn-success mb-2">
+                                    <i class="fas fa-trophy"></i> View Results
+                                </a>
+                            </div>
+                        </div>
+                        <% } %>
+
+                        <!-- Public Actions -->
+                        <div class="mt-4">
+                            <button type="button" class="btn btn-primary btn-lg" data-bs-toggle="modal" data-bs-target="#tournamentDetailsModal" onclick="loadTournamentDetails('<%= tournament._id %>')">
+                                View tournament details
+                            </button>
+                            <% if (typeof currentUser !== 'undefined' && currentUser) { %>
+                                <% 
+                                    const now = new Date();
+                                    const regStart = new Date(tournament.registrationStartDate);
+                                    const regEnd = new Date(tournament.registrationEndDate);
+                                    const isRegistrationOpen = now >= regStart && now <= regEnd;
+                                    let tooltipMessage = '';
+                                    if (now < regStart) {
+                                        tooltipMessage = `Rejestracja rozpocznie się ${regStart.toLocaleDateString('pl-PL')}`;
+                                    } else if (now > regEnd) {
+                                        tooltipMessage = `Rejestracja zakończyła się ${regEnd.toLocaleDateString('pl-PL')}`;
+                                    }
+                                %>
+                                <% if (isRegistrationOpen) { %>
+                                    <a href="/tournaments/<%= tournament._id %>/add-club" class="btn btn-success btn-lg">Join Tournament</a>
+                                <% } else { %>
+                                    <button class="btn btn-success btn-lg" disabled 
+                                            data-bs-toggle="tooltip" 
+                                            data-bs-placement="top" 
+                                            title="<%= tooltipMessage %>">
+                                        Join Tournament
+                                    </button>
+                                <% } %>
+                            <% } else { %>
+                                <a href="/login" class="btn btn-success btn-lg">Zaloguj się, aby dołączyć do turnieju</a>
+                            <% } %>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -61,7 +123,600 @@
         </div>
     </div>
 
-    <!-- Bootstrap JS (for interactions like modals, dropdowns, etc.) -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
+    <!-- Tournament Details Modal -->
+    <div class="modal fade" id="tournamentDetailsModal" tabindex="-1" aria-labelledby="tournamentDetailsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="tournamentDetailsModalLabel">Szczegóły Turnieju</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="tournamentDetailsContent">
+                    <div class="text-center">
+                        <div class="spinner-border" role="status">
+                            <span class="visually-hidden">Ładowanie...</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Zamknij</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Tournament Modal -->
+    <div class="modal fade" id="editTournamentModal" tabindex="-1" aria-labelledby="editTournamentModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editTournamentModalLabel">Edytuj Turniej</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="editTournamentContent">
+                    <div class="text-center">
+                        <div class="spinner-border" role="status">
+                            <span class="visually-hidden">Ładowanie...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript for Admin Controls -->
+    <script>
+    // Prepare tournament
+    function prepareTournament(tournamentId) {
+        if (confirm('Czy na pewno chcesz przygotować turniej? To wygeneruje wszystkie drabinki i grupy.')) {
+            fetch(`/admin/tournaments/${tournamentId}/prepare`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => {
+                if (response.ok) {
+                    location.reload();
+                } else {
+                    alert('Błąd podczas przygotowywania turnieju');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Błąd podczas przygotowywania turnieju');
+            });
+        }
+    }
+
+    // Start tournament
+    function startTournament(tournamentId) {
+        if (confirm('Czy na pewno chcesz rozpocząć turniej?')) {
+            fetch(`/admin/tournaments/${tournamentId}/start`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => {
+                if (response.ok) {
+                    location.reload();
+                } else {
+                    alert('Błąd podczas rozpoczynania turnieju');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Błąd podczas rozpoczynania turnieju');
+            });
+        }
+    }
+
+    // Generate brackets
+    function generateBrackets(tournamentId) {
+        if (confirm('Czy na pewno chcesz wygenerować drabinki?')) {
+            fetch(`/admin/tournaments/${tournamentId}/generate-brackets`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => {
+                if (response.ok) {
+                    location.reload();
+                } else {
+                    alert('Błąd podczas generowania drabinek');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Błąd podczas generowania drabinek');
+            });
+        }
+    }
+    
+    // Load tournament details
+    function loadTournamentDetails(tournamentId) {
+        const contentDiv = document.getElementById('tournamentDetailsContent');
+        contentDiv.innerHTML = '<div class="text-center"><div class="spinner-border" role="status"><span class="visually-hidden">Ładowanie...</span></div></div>';
+        
+        fetch(`/tournaments/${tournamentId}/details`)
+            .then(response => response.json())
+            .then(data => {
+                const tournament = data.tournament;
+                const categories = data.categories;
+                
+                let html = `
+                    <div class="tournament-details">
+                        <h4 class="mb-3">${tournament.name}</h4>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <p><strong>Ranga:</strong> ${tournament.rank}</p>
+                                <p><strong>Lokalizacja:</strong> ${tournament.location}</p>
+                                <p><strong>Data rozpoczęcia:</strong> ${new Date(tournament.startDate).toLocaleDateString('pl-PL')}</p>
+                                <p><strong>Data zakończenia:</strong> ${new Date(tournament.endDate).toLocaleDateString('pl-PL')}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <p><strong>Godzina rozpoczęcia:</strong> ${tournament.startTime}</p>
+                                <p><strong>Planowana godzina zakończenia:</strong> ${tournament.endTime}</p>
+                                <p><strong>Koszt biletu wstępu:</strong> ${tournament.ticketPrice > 0 ? tournament.ticketPrice.toFixed(2) + ' PLN' : 'Darmowy'}</p>
+                            </div>
+                        </div>
+                        
+                        <hr>
+                        
+                        <h5 class="mb-3">Zawodnicy według kategorii</h5>
+                `;
+                
+                if (categories && categories.length > 0) {
+                    categories.forEach(category => {
+                        html += `
+                            <div class="category-section mb-4">
+                                <h6 class="text-primary">${category.name}</h6>
+                        `;
+                        
+                        if (category.participants && category.participants.length > 0) {
+                            html += `
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-striped">
+                                        <thead>
+                                            <tr>
+                                                <th>Imię i Nazwisko</th>
+                                                <th>Klub</th>
+                                                <th>Pas</th>
+                                                <th>Waga (kg)</th>
+                                                <th>Płeć</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                            `;
+                            
+                            category.participants.forEach(participant => {
+                                html += `
+                                    <tr>
+                                        <td>${participant.firstName} ${participant.lastName}</td>
+                                        <td>${participant.club}</td>
+                                        <td>${participant.beltRank}</td>
+                                        <td>${participant.weight}</td>
+                                        <td>${participant.gender === 'male' ? 'Mężczyzna' : 'Kobieta'}</td>
+                                    </tr>
+                                `;
+                            });
+                            
+                            html += `
+                                        </tbody>
+                                    </table>
+                                </div>
+                            `;
+                        } else {
+                            html += '<p class="text-muted">Brak zawodników w tej kategorii</p>';
+                        }
+                        
+                        html += '</div>';
+                    });
+                } else {
+                    html += '<p class="text-muted">Brak kategorii w turnieju</p>';
+                }
+                
+                html += '</div>';
+                contentDiv.innerHTML = html;
+            })
+            .catch(error => {
+                console.error('Error loading tournament details:', error);
+                contentDiv.innerHTML = '<div class="alert alert-danger">Błąd podczas ładowania szczegółów turnieju</div>';
+            });
+    }
+    
+    // Load edit tournament form
+    function loadEditTournamentForm(tournamentId) {
+        const contentDiv = document.getElementById('editTournamentContent');
+        contentDiv.innerHTML = '<div class="text-center"><div class="spinner-border" role="status"><span class="visually-hidden">Ładowanie...</span></div></div>';
+        
+        fetch(`/tournaments/${tournamentId}/edit-data`)
+            .then(response => response.json())
+            .then(data => {
+                const tournament = data.tournament;
+                const categories = data.categories;
+                
+                // Format dates for input fields
+                const formatDateForInput = (date) => {
+                    if (!date) return '';
+                    const d = new Date(date);
+                    return d.toISOString().split('T')[0];
+                };
+                
+                let html = `
+                    <form id="editTournamentForm" enctype="multipart/form-data">
+                        <input type="hidden" name="tournamentId" value="${tournamentId}">
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="editName" class="form-label">Nazwa turnieju</label>
+                                    <input type="text" class="form-control" id="editName" name="name" value="${tournament.name || ''}" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="editRank" class="form-label">Ranga</label>
+                                    <input type="text" class="form-control" id="editRank" name="rank" value="${tournament.rank || ''}">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="editDescription" class="form-label">Opis</label>
+                            <textarea class="form-control" id="editDescription" name="description" rows="3">${tournament.description || ''}</textarea>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="editLocation" class="form-label">Lokalizacja</label>
+                                    <input type="text" class="form-control" id="editLocation" name="location" value="${tournament.location || ''}" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="editTicketPrice" class="form-label">Koszt biletu wstępu (PLN)</label>
+                                    <input type="number" step="0.01" class="form-control" id="editTicketPrice" name="ticketPrice" value="${tournament.ticketPrice || 0}">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-3">
+                                <div class="mb-3">
+                                    <label for="editStartDate" class="form-label">Data rozpoczęcia</label>
+                                    <input type="date" class="form-control" id="editStartDate" name="startDate" value="${formatDateForInput(tournament.startDate)}" required>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="mb-3">
+                                    <label for="editEndDate" class="form-label">Data zakończenia</label>
+                                    <input type="date" class="form-control" id="editEndDate" name="endDate" value="${formatDateForInput(tournament.endDate)}" required>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="mb-3">
+                                    <label for="editStartTime" class="form-label">Godzina rozpoczęcia</label>
+                                    <input type="time" class="form-control" id="editStartTime" name="startTime" value="${tournament.startTime || ''}">
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="mb-3">
+                                    <label for="editEndTime" class="form-label">Godzina zakończenia</label>
+                                    <input type="time" class="form-control" id="editEndTime" name="endTime" value="${tournament.endTime || ''}">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="editRegistrationStartDate" class="form-label">Data rozpoczęcia rejestracji</label>
+                                    <input type="date" class="form-control" id="editRegistrationStartDate" name="registrationStartDate" value="${formatDateForInput(tournament.registrationStartDate)}" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="editRegistrationEndDate" class="form-label">Data zakończenia rejestracji</label>
+                                    <input type="date" class="form-control" id="editRegistrationEndDate" name="registrationEndDate" value="${formatDateForInput(tournament.registrationEndDate)}" required>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <hr>
+                        
+                        <h5 class="mb-3">Kategorie</h5>
+                        <div id="categoriesContainer">
+                `;
+                
+                if (categories && categories.length > 0) {
+                    categories.forEach((category, index) => {
+                        html += `
+                            <div class="card mb-3 category-item" data-category-id="${category._id}">
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <label class="form-label">Nazwa kategorii</label>
+                                            <input type="text" class="form-control category-name" value="${category.name || ''}" data-category-id="${category._id}">
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label">Typ drabinki</label>
+                                            <select class="form-control category-bracket-type" data-category-id="${category._id}">
+                                                <option value="single_elimination" ${category.bracketType === 'single_elimination' ? 'selected' : ''}>Pojedyncza eliminacja</option>
+                                                <option value="double_elimination" ${category.bracketType === 'double_elimination' ? 'selected' : ''}>Podwójna eliminacja</option>
+                                                <option value="round_robin" ${category.bracketType === 'round_robin' ? 'selected' : ''}>Każdy z każdym</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label">Płeć</label>
+                                            <select class="form-control category-gender" data-category-id="${category._id}">
+                                                <option value="">Wszystkie</option>
+                                                <option value="male" ${category.gender === 'male' ? 'selected' : ''}>Mężczyźni</option>
+                                                <option value="female" ${category.gender === 'female' ? 'selected' : ''}>Kobiety</option>
+                                                <option value="mixed" ${category.gender === 'mixed' ? 'selected' : ''}>Mieszane</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label">&nbsp;</label>
+                                            <button type="button" class="btn btn-danger btn-sm w-100" onclick="deleteCategory('${category._id}')">Usuń</button>
+                                        </div>
+                                    </div>
+                                    <div class="row mt-2">
+                                        <div class="col-md-3">
+                                            <label class="form-label">Wiek min</label>
+                                            <input type="number" class="form-control category-age-min" value="${category.ageMin || ''}" data-category-id="${category._id}">
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label">Wiek max</label>
+                                            <input type="number" class="form-control category-age-max" value="${category.ageMax || ''}" data-category-id="${category._id}">
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label">Waga min (kg)</label>
+                                            <input type="number" step="0.1" class="form-control category-weight-min" value="${category.weightMin || ''}" data-category-id="${category._id}">
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label">Waga max (kg)</label>
+                                            <input type="number" step="0.1" class="form-control category-weight-max" value="${category.weightMax || ''}" data-category-id="${category._id}">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                }
+                
+                html += `
+                        </div>
+                        <button type="button" class="btn btn-success mb-3" onclick="addNewCategory()">
+                            <i class="fas fa-plus"></i> Dodaj nową kategorię
+                        </button>
+                        
+                        <hr>
+                        
+                        <h5 class="mb-3">Zdjęcia</h5>
+                        <div id="imagesContainer" class="row mb-3">
+                `;
+                
+                if (tournament.images && tournament.images.length > 0) {
+                    tournament.images.forEach((image, index) => {
+                        html += `
+                            <div class="col-md-3 mb-3 image-item" data-image-index="${index}">
+                                <div class="card">
+                                    <img src="${image.url}" class="card-img-top" style="height: 150px; object-fit: cover;">
+                                    <div class="card-body p-2">
+                                        <button type="button" class="btn btn-danger btn-sm w-100" onclick="deleteImage(${index})">Usuń</button>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                }
+                
+                html += `
+                        </div>
+                        <div class="mb-3">
+                            <label for="editImages" class="form-label">Dodaj nowe zdjęcia</label>
+                            <input type="file" class="form-control" id="editImages" name="images" multiple accept="image/*">
+                            <small class="form-text text-muted">Możesz wybrać wiele zdjęć naraz</small>
+                        </div>
+                        
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Anuluj</button>
+                            <button type="submit" class="btn btn-primary">Zapisz zmiany</button>
+                        </div>
+                    </form>
+                `;
+                
+                contentDiv.innerHTML = html;
+                
+                // Add form submit handler
+                document.getElementById('editTournamentForm').addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    saveTournamentChanges(tournamentId);
+                });
+            })
+            .catch(error => {
+                console.error('Error loading edit form:', error);
+                contentDiv.innerHTML = '<div class="alert alert-danger">Błąd podczas ładowania formularza edycji</div>';
+            });
+    }
+    
+    // Save tournament changes
+    async function saveTournamentChanges(tournamentId) {
+        const form = document.getElementById('editTournamentForm');
+        const formData = new FormData(form);
+        
+        // Collect category data
+        const categories = [];
+        document.querySelectorAll('.category-item').forEach(item => {
+            const categoryId = item.getAttribute('data-category-id');
+            const name = item.querySelector('.category-name').value;
+            if (name) {
+                categories.push({
+                    id: categoryId,
+                    name: name,
+                    bracketType: item.querySelector('.category-bracket-type').value,
+                    gender: item.querySelector('.category-gender').value,
+                    ageMin: item.querySelector('.category-age-min').value,
+                    ageMax: item.querySelector('.category-age-max').value,
+                    weightMin: item.querySelector('.category-weight-min').value,
+                    weightMax: item.querySelector('.category-weight-max').value
+                });
+            }
+        });
+        
+        formData.append('categories', JSON.stringify(categories));
+        
+        // Convert images to base64
+        const imageInput = document.getElementById('editImages');
+        if (imageInput.files && imageInput.files.length > 0) {
+            const imagesBase64 = [];
+            const filePromises = Array.from(imageInput.files).map(file => {
+                return new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        imagesBase64.push({
+                            name: file.name,
+                            data: e.target.result
+                        });
+                        resolve();
+                    };
+                    reader.readAsDataURL(file);
+                });
+            });
+            
+            await Promise.all(filePromises);
+            formData.append('imagesBase64', JSON.stringify(imagesBase64));
+        }
+        
+        fetch(`/tournaments/${tournamentId}/edit`, {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Turniej został zaktualizowany pomyślnie');
+                location.reload();
+            } else {
+                alert('Błąd podczas zapisywania zmian: ' + (data.error || 'Nieznany błąd'));
+            }
+        })
+        .catch(error => {
+            console.error('Error saving changes:', error);
+            alert('Błąd podczas zapisywania zmian');
+        });
+    }
+    
+    // Add new category
+    function addNewCategory() {
+        const container = document.getElementById('categoriesContainer');
+        const newCategoryHtml = `
+            <div class="card mb-3 category-item" data-category-id="new">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <label class="form-label">Nazwa kategorii</label>
+                            <input type="text" class="form-control category-name" data-category-id="new">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Typ drabinki</label>
+                            <select class="form-control category-bracket-type" data-category-id="new">
+                                <option value="single_elimination">Pojedyncza eliminacja</option>
+                                <option value="double_elimination">Podwójna eliminacja</option>
+                                <option value="round_robin">Każdy z każdym</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Płeć</label>
+                            <select class="form-control category-gender" data-category-id="new">
+                                <option value="">Wszystkie</option>
+                                <option value="male">Mężczyźni</option>
+                                <option value="female">Kobiety</option>
+                                <option value="mixed">Mieszane</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">&nbsp;</label>
+                            <button type="button" class="btn btn-danger btn-sm w-100" onclick="this.closest('.category-item').remove()">Usuń</button>
+                        </div>
+                    </div>
+                    <div class="row mt-2">
+                        <div class="col-md-3">
+                            <label class="form-label">Wiek min</label>
+                            <input type="number" class="form-control category-age-min" data-category-id="new">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Wiek max</label>
+                            <input type="number" class="form-control category-age-max" data-category-id="new">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Waga min (kg)</label>
+                            <input type="number" step="0.1" class="form-control category-weight-min" data-category-id="new">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Waga max (kg)</label>
+                            <input type="number" step="0.1" class="form-control category-weight-max" data-category-id="new">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        container.insertAdjacentHTML('beforeend', newCategoryHtml);
+    }
+    
+    // Delete category
+    function deleteCategory(categoryId) {
+        if (confirm('Czy na pewno chcesz usunąć tę kategorię?')) {
+            fetch(`/tournaments/categories/${categoryId}`, {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.querySelector(`[data-category-id="${categoryId}"]`).remove();
+                } else {
+                    alert('Błąd podczas usuwania kategorii');
+                }
+            })
+            .catch(error => {
+                console.error('Error deleting category:', error);
+                alert('Błąd podczas usuwania kategorii');
+            });
+        }
+    }
+    
+    // Delete image
+    function deleteImage(imageIndex) {
+        if (confirm('Czy na pewno chcesz usunąć to zdjęcie?')) {
+            const tournamentId = document.querySelector('input[name="tournamentId"]').value;
+            fetch(`/tournaments/${tournamentId}/images/${imageIndex}`, {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.querySelector(`[data-image-index="${imageIndex}"]`).remove();
+                } else {
+                    alert('Błąd podczas usuwania zdjęcia');
+                }
+            })
+            .catch(error => {
+                console.error('Error deleting image:', error);
+                alert('Błąd podczas usuwania zdjęcia');
+            });
+        }
+    }
+    
+    // Initialize Bootstrap tooltips
+    document.addEventListener('DOMContentLoaded', function() {
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+    });
+    </script>

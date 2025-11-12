@@ -1,128 +1,300 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tournament Brackets</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
-<body>
+<%- include('../partials/header') %>
+
+<div class="container-fluid mt-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-sitemap"></i> Drabinki turnieju: <%= tournament.name %></h2>
+    <div>
+      <a href="/admin/tournaments/<%= tournament._id %>/live" class="btn btn-primary">
+        <i class="fas fa-play"></i> Turniej na żywo
+      </a>
+      <a href="/admin/tournaments/<%= tournament._id %>/manage" class="btn btn-secondary">
+        <i class="fas fa-cog"></i> Zarządzanie
+      </a>
+    </div>
+  </div>
+
+  <!-- Tournament Categories -->
+  <% categories.forEach(category => { %>
+    <div class="row mb-5">
+      <div class="col-12">
+        <div class="card">
+          <div class="card-header">
+            <h4><i class="fas fa-tag"></i> <%= category.name %></h4>
+            <small class="text-muted">Typ: <%= category.bracketType %></small>
+          </div>
+          <div class="card-body">
+            <% if (category.bracketType === 'single_elimination') { %>
+              <%= renderSingleEliminationBracket(category) %>
+            <% } else if (category.bracketType === 'round_robin') { %>
+              <%= renderRoundRobinBracket(category) %>
+            <% } else { %>
+              <p class="text-muted">Typ drabinki nie jest jeszcze obsługiwany</p>
+            <% } %>
+          </div>
+        </div>
+      </div>
+    </div>
+  <% }) %>
+</div>
+
+<style>
+.bracket-container {
+  overflow-x: auto;
+  padding: 20px 0;
+}
+
+.round {
+  display: inline-block;
+  vertical-align: top;
+  margin: 0 20px;
+  min-width: 200px;
+}
+
+.round-title {
+  text-align: center;
+  font-weight: bold;
+  margin-bottom: 20px;
+  padding: 10px;
+  background-color: #f8f9fa;
+  border-radius: 5px;
+}
+
+.match {
+  margin-bottom: 20px;
+  padding: 10px;
+  border: 1px solid #dee2e6;
+  border-radius: 5px;
+  background-color: white;
+  min-height: 60px;
+  position: relative;
+}
+
+.match.completed {
+  background-color: #d4edda;
+  border-color: #c3e6cb;
+}
+
+.match.in-progress {
+  background-color: #fff3cd;
+  border-color: #ffeaa7;
+}
+
+.participant {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 5px 0;
+  min-height: 30px;
+}
+
+.participant.winner {
+  font-weight: bold;
+  color: #28a745;
+}
+
+.participant-name {
+  flex: 1;
+}
+
+.participant-score {
+  font-weight: bold;
+  margin-left: 10px;
+}
+
+.match-info {
+  text-align: center;
+  font-size: 0.8em;
+  color: #6c757d;
+  margin-top: 5px;
+}
+
+.round-robin-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.round-robin-table th,
+.round-robin-table td {
+  border: 1px solid #dee2e6;
+  padding: 8px;
+  text-align: center;
+}
+
+.round-robin-table th {
+  background-color: #f8f9fa;
+  font-weight: bold;
+}
+
+.round-robin-table tr:nth-child(even) {
+  background-color: #f8f9fa;
+}
+
+.belt-indicator {
+  display: inline-block;
+  width: 15px;
+  height: 15px;
+  border-radius: 2px;
+  margin-right: 5px;
+  vertical-align: middle;
+}
+</style>
+
+<script>
+// Auto-refresh every 60 seconds
+setInterval(() => {
+  location.reload();
+}, 60000);
+</script>
+
+<%- include('../partials/footer') %>
+
+<% function renderSingleEliminationBracket(category) { %>
+  <div class="bracket-container">
+    <% 
+      const matches = category.matches || [];
+      const rounds = {};
+      
+      // Group matches by round
+      matches.forEach(match => {
+        if (!rounds[match.round]) {
+          rounds[match.round] = [];
+        }
+        rounds[match.round].push(match);
+      });
+      
+      const roundNames = Object.keys(rounds).sort();
+    %>
     
-</body>
-</html>
+    <% roundNames.forEach(roundName => { %>
+      <div class="round">
+        <div class="round-title"><%= roundName %></div>
+        <% rounds[roundName].forEach(match => { %>
+          <div class="match <%= match.status %>">
+            <div class="participant <%= match.winner && match.winner._id.toString() === match.participant1._id.toString() ? 'winner' : '' %>">
+              <span class="participant-name">
+                <% if (match.participant1) { %>
+                  <%= match.participant1.firstName %> <%= match.participant1.lastName %>
+                  <% if (match.participant1.beltRank) { %>
+                    <span class="belt-indicator" style="background-color: <%= match.participant1.beltRank.color %>;"></span>
+                  <% } %>
+                <% } else { %>
+                  TBD
+                <% } %>
+              </span>
+              <span class="participant-score"><%= match.score1 || 0 %></span>
+            </div>
+            <div class="participant <%= match.winner && match.winner._id.toString() === match.participant2._id.toString() ? 'winner' : '' %>">
+              <span class="participant-name">
+                <% if (match.participant2) { %>
+                  <%= match.participant2.firstName %> <%= match.participant2.lastName %>
+                  <% if (match.participant2.beltRank) { %>
+                    <span class="belt-indicator" style="background-color: <%= match.participant2.beltRank.color %>;"></span>
+                  <% } %>
+                <% } else { %>
+                  TBD
+                <% } %>
+              </span>
+              <span class="participant-score"><%= match.score2 || 0 %></span>
+            </div>
+            <div class="match-info">
+              <% if (match.court) { %>Boisko: <%= match.court %><% } %>
+              <% if (match.scheduledTime) { %> | <%= new Date(match.scheduledTime).toLocaleTimeString() %><% } %>
+            </div>
+          </div>
+        <% }) %>
+      </div>
+    <% }) %>
+  </div>
+<% } %>
 
-
-    <!-- <style>
-        body {
-            background-color: #f8f9fa;
-            font-family: 'Arial', sans-serif;
-        }
+<% function renderRoundRobinBracket(category) { %>
+  <div class="round-robin-container">
+    <table class="round-robin-table">
+      <thead>
+        <tr>
+          <th>Uczestnik</th>
+          <th>Mecze</th>
+          <th>Wygrane</th>
+          <th>Punkty</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% 
+          const participants = category.participants || [];
+          const matches = category.matches || [];
+          
+          // Calculate standings
+          const standings = {};
+          participants.forEach(participant => {
+            standings[participant._id] = {
+              participant: participant,
+              matches: 0,
+              wins: 0,
+              points: 0
+            };
+          });
+          
+          matches.forEach(match => {
+            if (match.status === 'completed' && match.participant1 && match.participant2) {
+              standings[match.participant1._id].matches++;
+              standings[match.participant2._id].matches++;
+              
+              if (match.winner) {
+                standings[match.winner._id].wins++;
+                standings[match.winner._id].points += 3;
+              }
+            }
+          });
+          
+          // Sort by points, then by wins
+          const sortedStandings = Object.values(standings).sort((a, b) => {
+            if (b.points !== a.points) return b.points - a.points;
+            return b.wins - a.wins;
+          });
+        %>
         
-        .bracket-container {
-            display: flex;
-            overflow-x: auto;
-            padding: 20px 0;
-            min-height: 600px;
-        }
-        
-        .round {
-            display: flex;
-            flex-direction: column;
-            margin-right: 40px;
-            min-width: 250px;
-        }
-        
-        .round-title {
-            text-align: center;
-            font-weight: bold;
-            margin-bottom: 20px;
-            background-color: #4e73df;
-            color: white;
-            padding: 10px;
-            border-radius: 5px;
-        }
-        
-        .match-connector {
-            flex-grow: 1;
-            border-right: 2px solid #ccc;
-            width: 25px;
-            margin: 0 auto;
-        }
-        
-        .match-wrapper {
-            display: flex;
-            flex-direction: column;
-            margin-bottom: 20px;
-            height: 120px;
-        }
-        
-        .match-card {
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            background-color: white;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            margin-bottom: 10px;
-            padding: 10px;
-            position: relative;
-        }
-        
-        .participant {
-            display: flex;
-            justify-content: space-between;
-            padding: 8px 10px;
-            border-bottom: 1px solid #eee;
-        }
-        
-        .participant:last-child {
-            border-bottom: none;
-        }
-        
-        .winner {
-            background-color: #d4edda;
-            font-weight: bold;
-        }
-        
-        .loser {
-            color: #6c757d;
-        }
-        
-        .score {
-            font-weight: bold;
-            min-width: 30px;
-            text-align: center;
-        }
-        
-        .match-number {
-            position: absolute;
-            top: -10px;
-            right: -10px;
-            background-color: #6c757d;
-            color: white;
-            font-size: 12px;
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .match-status {
-            text-align: center;
-            font-size: 12px;
-            margin-top: 5px;
-            color: #6c757d;
-        }
-        
-        .bye {
-            font-style: italic;
-            color: #999;
-        }
-    </style>
-</head>
-<body>
-    <div class="container-fluid mt-4">
-        <div class="row mb-4">
-            <div class="col text-center">
-                <h1 class="display-4">Tournament Brackets</h1>
-                <p class="lea -->
+        <% sortedStandings.forEach((standing, index) => { %>
+          <tr>
+            <td>
+              <strong><%= standing.participant.firstName %> <%= standing.participant.lastName %></strong>
+              <% if (standing.participant.beltRank) { %>
+                <span class="belt-indicator" style="background-color: <%= standing.participant.beltRank.color %>;"></span>
+              <% } %>
+            </td>
+            <td><%= standing.matches %></td>
+            <td><%= standing.wins %></td>
+            <td><strong><%= standing.points %></strong></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+    
+    <div class="mt-4">
+      <h5>Mecze:</h5>
+      <div class="row">
+        <% matches.forEach(match => { %>
+          <div class="col-md-6 mb-2">
+            <div class="match <%= match.status %>">
+              <div class="participant">
+                <span class="participant-name">
+                  <%= match.participant1 ? match.participant1.firstName + ' ' + match.participant1.lastName : 'TBD' %>
+                </span>
+                <span class="participant-score"><%= match.score1 || 0 %></span>
+              </div>
+              <div class="participant">
+                <span class="participant-name">
+                  <%= match.participant2 ? match.participant2.firstName + ' ' + match.participant2.lastName : 'TBD' %>
+                </span>
+                <span class="participant-score"><%= match.score2 || 0 %></span>
+              </div>
+              <div class="match-info">
+                <% if (match.court) { %>Boisko: <%= match.court %><% } %>
+                <% if (match.scheduledTime) { %> | <%= new Date(match.scheduledTime).toLocaleTimeString() %><% } %>
+              </div>
+            </div>
+          </div>
+        <% }) %>
+      </div>
+    </div>
+  </div>
+<% } %>

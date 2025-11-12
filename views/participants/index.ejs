@@ -34,10 +34,10 @@
                             <% participants.forEach(participant => { %>
                                 <tr>
                                     <td><%= participant.firstName %> <%= participant.lastName %></td>
-                                    <td><%= participant.gender %></td>
+                                    <td><%= getGenderText(participant.gender) %></td>
                                     <td><%= calculateAge(participant.dateOfBirth) %></td>
                                     <td><%= participant.weight %> kg</td>
-                                    <td><%= participant.beltRank %></td>
+                                    <td><%= participant.beltRank ? participant.beltRank.rank : 'N/A' %></td>
                                     <td><%= participant.category ? 'Assigned' : 'Not assigned' %></td>
                                 </tr>
                             <% }); %>
