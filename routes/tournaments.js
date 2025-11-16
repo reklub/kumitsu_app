@@ -81,7 +81,7 @@ router.get('/:id/details', async (req, res) => {
             return res.status(404).json({ error: 'Tournament not found' });
         }
         
-        // Get all categories with participants
+        // Get all categories with participants and beltFrom/beltTo
         const categories = await Category.find({ tournament: tournament._id })
             .populate({
                 path: 'participants',
@@ -90,7 +90,8 @@ router.get('/:id/details', async (req, res) => {
                     select: 'description rank color clubName'
                 }
             })
-            .populate('beltRanks');
+            .populate('beltFrom')
+            .populate('beltTo');
         
         res.json({
             tournament: {
@@ -131,8 +132,12 @@ router.get('/:id/edit-data', authMiddleware, async (req, res) => {
             return res.status(404).json({ error: 'Tournament not found' });
         }
         
-        const categories = await Category.find({ tournament: tournament._id });
-        
+        const categories = await Category.find({ tournament: tournament._id })
+            .populate('beltFrom')
+            .populate('beltTo');
+
+        const beltRanks = await BeltRank.find().sort({ order: 1 });
+
         res.json({
             tournament: {
                 _id: tournament._id,
@@ -157,8 +162,11 @@ router.get('/:id/edit-data', authMiddleware, async (req, res) => {
                 ageMin: cat.ageMin,
                 ageMax: cat.ageMax,
                 weightMin: cat.weightMin,
-                weightMax: cat.weightMax
-            }))
+                weightMax: cat.weightMax,
+                beltFrom: cat.beltFrom ? { _id: cat.beltFrom._id, description: cat.beltFrom.description } : null,
+                beltTo: cat.beltTo ? { _id: cat.beltTo._id, description: cat.beltTo.description } : null
+            })),
+            beltRanks: beltRanks.map(b => ({ _id: b._id, rank: b.rank, description: b.description }))
         });
     } catch (error) {
         console.error('Error fetching tournament edit data:', error);
@@ -173,34 +181,51 @@ router.post('/:id/edit', authMiddleware, async (req, res) => {
         const fs = require('fs').promises;
         const path = require('path');
         
+        console.log('=== EDIT TOURNAMENT REQUEST ===');
+        console.log('Content-Type:', req.get('Content-Type'));
+        console.log('Full req.body:', JSON.stringify(req.body, null, 2));
+        console.log('Categories exists?', !!req.body.categories);
+        console.log('Categories type:', typeof req.body.categories);
+        console.log('Is Array?', Array.isArray(req.body.categories));
+        
         const tournament = await Tournament.findById(req.params.id);
         if (!tournament) {
             return res.status(404).json({ error: 'Tournament not found' });
         }
         
         // Update basic tournament fields
-        tournament.name = req.body.name;
-        tournament.rank = req.body.rank;
-        tournament.description = req.body.description;
-        tournament.location = req.body.location;
-        tournament.ticketPrice = Number.parseFloat(req.body.ticketPrice) || 0;
-        tournament.startDate = new Date(req.body.startDate);
-        tournament.endDate = new Date(req.body.endDate);
-        tournament.startTime = req.body.startTime;
-        tournament.endTime = req.body.endTime;
-        tournament.registrationStartDate = new Date(req.body.registrationStartDate);
-        tournament.registrationEndDate = new Date(req.body.registrationEndDate);
+        tournament.name = req.body.name || tournament.name;
+        tournament.rank = req.body.rank || tournament.rank;
+        tournament.description = req.body.description || tournament.description;
+        tournament.location = req.body.location || tournament.location;
+        tournament.ticketPrice = req.body.ticketPrice ? Number.parseFloat(req.body.ticketPrice) : tournament.ticketPrice;
         
-        // Handle image uploads - using base64 or file buffer
-        if (req.body.imagesBase64) {
-            const imagesData = typeof req.body.imagesBase64 === 'string' 
-                ? JSON.parse(req.body.imagesBase64) 
-                : req.body.imagesBase64;
-            
+        // Safely parse dates - handle both string and Date objects
+        if (req.body.startDate) {
+            const startDate = new Date(req.body.startDate);
+            if (!isNaN(startDate.getTime())) tournament.startDate = startDate;
+        }
+        if (req.body.endDate) {
+            const endDate = new Date(req.body.endDate);
+            if (!isNaN(endDate.getTime())) tournament.endDate = endDate;
+        }
+        if (req.body.startTime) tournament.startTime = req.body.startTime;
+        if (req.body.endTime) tournament.endTime = req.body.endTime;
+        if (req.body.registrationStartDate) {
+            const regStartDate = new Date(req.body.registrationStartDate);
+            if (!isNaN(regStartDate.getTime())) tournament.registrationStartDate = regStartDate;
+        }
+        if (req.body.registrationEndDate) {
+            const regEndDate = new Date(req.body.registrationEndDate);
+            if (!isNaN(regEndDate.getTime())) tournament.registrationEndDate = regEndDate;
+        }
+        
+        // Handle image uploads - using base64 array
+        if (req.body.imagesBase64 && Array.isArray(req.body.imagesBase64)) {
             const imagesDir = path.join(__dirname, '../public/uploads/tournaments');
             await fs.mkdir(imagesDir, { recursive: true });
             
-            for (const imgData of imagesData) {
+            for (const imgData of req.body.imagesBase64) {
                 if (imgData.data && imgData.name) {
                     const base64Data = imgData.data.replace(/^data:image\/\w+;base64,/, '');
                     const buffer = Buffer.from(base64Data, 'base64');
@@ -219,44 +244,56 @@ router.post('/:id/edit', authMiddleware, async (req, res) => {
         
         await tournament.save();
         
-        // Handle categories - parse from JSON string if sent
-        if (req.body.categories) {
-            let categoriesData;
-            try {
-                categoriesData = typeof req.body.categories === 'string' 
-                    ? JSON.parse(req.body.categories) 
-                    : req.body.categories;
-            } catch (e) {
-                categoriesData = [];
-            }
-            
+        // Handle categories
+        if (req.body.categories && Array.isArray(req.body.categories)) {
+            const categoriesData = req.body.categories;
+            console.log('Parsed categories data:', JSON.stringify(categoriesData, null, 2));
+
             for (const catData of categoriesData) {
-                if (catData.id === 'new' && catData.name) {
-                    // Create new category
-                    const newCategory = new Category({
-                        name: catData.name,
-                        bracketType: catData.bracketType,
-                        gender: catData.gender || undefined,
-                        ageMin: catData.ageMin ? Number.parseInt(catData.ageMin) : undefined,
-                        ageMax: catData.ageMax ? Number.parseInt(catData.ageMax) : undefined,
-                        weightMin: catData.weightMin ? Number.parseFloat(catData.weightMin) : undefined,
-                        weightMax: catData.weightMax ? Number.parseFloat(catData.weightMax) : undefined,
-                        tournament: tournament._id
-                    });
-                    await newCategory.save();
-                } else if (catData.id && catData.id !== 'new') {
-                    // Update existing category
-                    const category = await Category.findById(catData.id);
-                    if (category) {
-                        category.name = catData.name;
-                        category.bracketType = catData.bracketType;
-                        category.gender = catData.gender || undefined;
-                        category.ageMin = catData.ageMin ? Number.parseInt(catData.ageMin) : undefined;
-                        category.ageMax = catData.ageMax ? Number.parseInt(catData.ageMax) : undefined;
-                        category.weightMin = catData.weightMin ? Number.parseFloat(catData.weightMin) : undefined;
-                        category.weightMax = catData.weightMax ? Number.parseFloat(catData.weightMax) : undefined;
-                        await category.save();
+                try {
+                    console.log('Processing category:', catData);
+                    // beltFrom / beltTo are expected to be BeltRank ids (string) or empty/null
+                    const beltFromId = catData.beltFrom && catData.beltFrom !== '' ? catData.beltFrom : null;
+                    const beltToId = catData.beltTo && catData.beltTo !== '' ? catData.beltTo : null;
+
+                    if (catData.id === 'new' && catData.name) {
+                        // Create new category
+                        console.log('Creating new category:', catData.name);
+                        const newCategory = new Category({
+                            name: catData.name,
+                            bracketType: catData.bracketType || 'single_elimination',
+                            gender: catData.gender && catData.gender !== '' ? catData.gender : null,
+                            ageMin: catData.ageMin ? Number.parseInt(catData.ageMin) : null,
+                            ageMax: catData.ageMax ? Number.parseInt(catData.ageMax) : null,
+                            weightMin: catData.weightMin ? Number.parseFloat(catData.weightMin) : null,
+                            weightMax: catData.weightMax ? Number.parseFloat(catData.weightMax) : null,
+                            beltFrom: beltFromId,
+                            beltTo: beltToId,
+                            tournament: tournament._id
+                        });
+                        const savedCategory = await newCategory.save();
+                        console.log('Saved new category:', savedCategory._id);
+                    } else if (catData.id && catData.id !== 'new') {
+                        // Update existing category
+                        console.log('Updating existing category:', catData.id);
+                        const category = await Category.findById(catData.id);
+                        if (category) {
+                            category.name = catData.name;
+                            category.bracketType = catData.bracketType || 'single_elimination';
+                            category.gender = catData.gender && catData.gender !== '' ? catData.gender : null;
+                            category.ageMin = catData.ageMin ? Number.parseInt(catData.ageMin) : null;
+                            category.ageMax = catData.ageMax ? Number.parseInt(catData.ageMax) : null;
+                            category.weightMin = catData.weightMin ? Number.parseFloat(catData.weightMin) : null;
+                            category.weightMax = catData.weightMax ? Number.parseFloat(catData.weightMax) : null;
+                            category.beltFrom = beltFromId;
+                            category.beltTo = beltToId;
+                            await category.save();
+                            console.log('Updated category:', catData.id);
+                        }
                     }
+                } catch (catError) {
+                    console.error('Error processing category:', catError);
+                    // Continue processing other categories
                 }
             }
         }
@@ -264,7 +301,7 @@ router.post('/:id/edit', authMiddleware, async (req, res) => {
         res.json({ success: true });
     } catch (error) {
         console.error('Error updating tournament:', error);
-        res.status(500).json({ error: 'Error updating tournament' });
+        res.status(500).json({ error: error.message || 'Error updating tournament' });
     }
 });
 
@@ -429,29 +466,45 @@ router.post("/:id/club/:clubId/add-participant", authMiddleware, async (req, res
         if (!club) return res.status(404).send("Club not found");
         if (!tournament) return res.status(404).send("Tournament not found");
 
+        console.log('=== ADD PARTICIPANT REQUEST (tournaments route) ===');
+        console.log('Body:', req.body);
+        console.log('Looking for belt rank:', req.body.beltRank);
+        
         // Find the belt rank by the rank string
-        const beltRankDoc = await BeltRank.findOne({ rank: req.body.belt });
+        const beltRankDoc = await BeltRank.findOne({ rank: req.body.beltRank });
+        console.log('Found belt rank doc:', beltRankDoc);
+        
         if (!beltRankDoc) {
+            console.log('Belt rank not found! Available belt ranks:');
+            const allRanks = await BeltRank.find();
+            allRanks.forEach(r => console.log(`  - ${r.rank}`));
             return res.status(400).send('Invalid belt rank');
         }
 
         // Create new participant linked to the club
         const participant = new Participant({
-            firstName: req.body.name,
-            lastName: req.body.surname,
-            dateOfBirth: new Date(req.body.dob),
+            firstName: req.body.firstName,
+            lastName: req.body.lastName,
+            dateOfBirth: new Date(req.body.dateOfBirth),
             weight: Number.parseFloat(req.body.weight),
             beltRank: beltRankDoc._id,
-            gender: req.body.sex,
+            gender: req.body.gender,
             club: club._id,
             tournament: tournament._id
         });
 
         await participant.save(); // Save participant to DB
 
+        // Populate beltRank for assignment function
+        await participant.populate('beltRank');
+
         // Add participant's ID to the club
         club.participants.push(participant._id);
         await club.save(); // Save club update
+
+        // Auto-assign participant to matching category
+        const tournamentManagementController = require('../controllers/tournamentManagementController');
+        await tournamentManagementController.assignParticipantToCategory(participant, tournament);
 
         res.redirect(`/tournaments/${tournament._id}/club/${club._id}`);
     } catch (err) {

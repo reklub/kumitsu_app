@@ -4,10 +4,53 @@ const Participant = require('../models/Participant');
 const Match = require('../models/Match');
 const BeltRank = require('../models/BeltRank');
 
+// Helper function to auto-assign a single participant to categories
+async function assignParticipantToCategory(participant, tournament) {
+  try {
+    const age = new Date().getFullYear() - participant.dateOfBirth.getFullYear();
+    
+    console.log(`\n=== Auto-assigning participant: ${participant.firstName} ${participant.lastName} ===`);
+    console.log(`Age: ${age}, Gender: ${participant.gender}, Weight: ${participant.weight}, Belt Rank Order: ${participant.beltRank.order}`);
+    
+    // Get all categories for this tournament with populated belt ranks
+    const categories = await Category.find({ tournament: tournament._id })
+      .populate('beltFrom')
+      .populate('beltTo');
+
+    console.log(`Found ${categories.length} categories for tournament`);
+
+    // Try to find a matching category
+    for (const category of categories) {
+      console.log(`\nChecking category: ${category.name}`);
+      console.log(`  Gender: ${category.gender}, Age: ${category.ageMin}-${category.ageMax}, Weight: ${category.weightMin}-${category.weightMax}`);
+      if (category.beltFrom) console.log(`  Belt from order: ${category.beltFrom.order}`);
+      if (category.beltTo) console.log(`  Belt to order: ${category.beltTo.order}`);
+      
+      if (matchesCategory(participant, age, category)) {
+        console.log(`✓ MATCH! Adding to category: ${category.name}`);
+        // Add participant to category if not already there
+        if (!category.participants.includes(participant._id)) {
+          category.participants.push(participant._id);
+          await category.save();
+        }
+        return category;
+      } else {
+        console.log(`✗ No match for ${category.name}`);
+      }
+    }
+    
+    console.log(`\n✗ Participant ${participant.firstName} ${participant.lastName} did not match any category\n`);
+    return null;
+  } catch (error) {
+    console.error('Error assigning participant to category:', error);
+    return null;
+  }
+}
+
 // Create a new category for a tournament
 exports.createCategory = async (req, res) => {
   try {
-    const { name, ageMin, ageMax, weightMin, weightMax, gender, beltRanks, bracketType } = req.body;
+    const { name, ageMin, ageMax, weightMin, weightMax, gender, beltFrom, beltTo, bracketType } = req.body;
     const tournamentId = req.params.tournamentId;
 
     const category = new Category({
@@ -17,7 +60,8 @@ exports.createCategory = async (req, res) => {
       weightMin: weightMin ? parseFloat(weightMin) : null,
       weightMax: weightMax ? parseFloat(weightMax) : null,
       gender,
-      beltRanks: beltRanks || [],
+      beltFrom: beltFrom || undefined,
+      beltTo: beltTo || undefined,
       tournament: tournamentId,
       bracketType: bracketType || 'single_elimination'
     });
@@ -45,8 +89,10 @@ exports.autoAssignParticipants = async (req, res) => {
       allParticipants.push(...participants);
     }
 
-    // Get all categories for this tournament
-    const categories = await Category.find({ tournament: tournamentId });
+    // Get all categories for this tournament with populated belt ranks
+    const categories = await Category.find({ tournament: tournamentId })
+      .populate('beltFrom')
+      .populate('beltTo');
 
     // Clear existing assignments
     for (const category of categories) {
@@ -80,20 +126,43 @@ exports.autoAssignParticipants = async (req, res) => {
 function matchesCategory(participant, age, category) {
   // Check gender
   if (category.gender && category.gender !== 'mixed' && participant.gender !== category.gender) {
+    console.log(`    ✗ Gender mismatch: ${participant.gender} != ${category.gender}`);
     return false;
   }
 
   // Check age
-  if (category.ageMin && age < category.ageMin) return false;
-  if (category.ageMax && age > category.ageMax) return false;
+  if (category.ageMin && age < category.ageMin) {
+    console.log(`    ✗ Age too low: ${age} < ${category.ageMin}`);
+    return false;
+  }
+  if (category.ageMax && age > category.ageMax) {
+    console.log(`    ✗ Age too high: ${age} > ${category.ageMax}`);
+    return false;
+  }
 
   // Check weight
-  if (category.weightMin && participant.weight < category.weightMin) return false;
-  if (category.weightMax && participant.weight > category.weightMax) return false;
+  if (category.weightMin && participant.weight < category.weightMin) {
+    console.log(`    ✗ Weight too low: ${participant.weight} < ${category.weightMin}`);
+    return false;
+  }
+  if (category.weightMax && participant.weight > category.weightMax) {
+    console.log(`    ✗ Weight too high: ${participant.weight} > ${category.weightMax}`);
+    return false;
+  }
 
-  // Check belt rank
-  if (category.beltRanks && category.beltRanks.length > 0) {
-    if (!category.beltRanks.includes(participant.beltRank._id)) {
+  // Check belt rank using beltFrom and beltTo (uses order field for ranking)
+  if (category.beltFrom || category.beltTo) {
+    const participantBeltOrder = participant.beltRank.order || 0;
+    
+    // If beltFrom is set, participant must be at or above that rank (higher or equal order)
+    if (category.beltFrom && participantBeltOrder < category.beltFrom.order) {
+      console.log(`    ✗ Belt rank too low: ${participantBeltOrder} < ${category.beltFrom.order}`);
+      return false;
+    }
+    
+    // If beltTo is set, participant must be at or below that rank (lower or equal order)
+    if (category.beltTo && participantBeltOrder > category.beltTo.order) {
+      console.log(`    ✗ Belt rank too high: ${participantBeltOrder} > ${category.beltTo.order}`);
       return false;
     }
   }
@@ -576,3 +645,6 @@ exports.showCreateCategoryForm = async (req, res) => {
     res.status(500).send('Server error');
   }
 };
+
+// Export helper function for use in other controllers
+exports.assignParticipantToCategory = assignParticipantToCategory;

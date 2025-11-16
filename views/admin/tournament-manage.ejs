@@ -142,8 +142,28 @@
                   </div>
                   <div class="col-md-6">
                     <div class="form-group">
-                      <label for="beltRanks">Pasy (oddzielone przecinkami)</label>
-                      <input type="text" class="form-control" id="beltRanks" name="beltRanks" placeholder="np. biały, żółty, pomarańczowy">
+                      <label for="beltFrom">Pasy - od</label>
+                      <select class="form-control" id="beltFrom" name="beltFrom">
+                        <option value="">-- brak (powyżej) --</option>
+                        <% if (typeof beltRanks !== 'undefined') { %>
+                          <% beltRanks.forEach(b => { %>
+                            <option value="<%= b._id %>"><%= b.description || b.rank %></option>
+                          <% }) %>
+                        <% } %>
+                      </select>
+                      <small class="form-text text-muted">Zostaw puste, by ustawić kategorię od wyższego pasa</small>
+                    </div>
+                    <div class="form-group mt-2">
+                      <label for="beltTo">Pasy - do</label>
+                      <select class="form-control" id="beltTo" name="beltTo">
+                        <option value="">-- brak (do) --</option>
+                        <% if (typeof beltRanks !== 'undefined') { %>
+                          <% beltRanks.forEach(b => { %>
+                            <option value="<%= b._id %>"><%= b.description || b.rank %></option>
+                          <% }) %>
+                        <% } %>
+                      </select>
+                      <small class="form-text text-muted">Zostaw puste, by ustawić kategorię do danego pasa</small>
                     </div>
                   </div>
                 </div>

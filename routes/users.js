@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const passport = require ('passport');
 const catchAsync = require('../utils/catchAsync');
-const storeReturnTo = require('../middlewares/authMiddleware');
+const { storeReturnTo } = require('../middlewares/authMiddleware');
 const user = require('../controllers/userController');
 
 

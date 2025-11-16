@@ -233,15 +233,20 @@ exports.showManagePage = async (req, res) => {
       allParticipants.push(...participants);
     }
 
-    // Get categories for this tournament
+    // Get categories for this tournament and populate beltFrom/beltTo
     const categories = await Category.find({ tournament: tournament._id })
       .populate('participants')
-      .populate('beltRanks');
+      .populate('beltFrom')
+      .populate('beltTo');
+
+    // Load available belt ranks for the form selects
+    const beltRanks = await getAllBeltRanks();
 
     res.render('admin/tournament-manage', {
       tournament,
       participants: allParticipants,
       categories,
+      beltRanks,
       getGenderText
     });
   } catch (error) {

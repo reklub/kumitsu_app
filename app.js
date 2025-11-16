@@ -4,6 +4,7 @@ const dotenv = require ('dotenv');
 const ejsMate = require('ejs-mate');
 const session = require ('express-session')
 const flash = require ('connect-flash')
+const methodOverride = require('method-override');
 const path = require ('path');
 
 const LocalStrategy = require('passport-local')
@@ -35,8 +36,9 @@ app.engine('ejs', ejsMate)
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'))
 
-app.use(express.urlencoded({ extended: true }));
-//app.use(methodOverride('_method'));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
+app.use(methodOverride('_method'));
 app.use(express.static(path.join(__dirname, 'public')))
 
 const sessionConfig = {

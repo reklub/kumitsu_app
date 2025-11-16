@@ -26,10 +26,21 @@ const categorySchema = new mongoose.Schema({
     enum: ['male', 'female', 'mixed'],
     required: false
   },
-  beltRanks: [{
+  // Optional belt range: from and to (references to BeltRank documents).
+  // If both are empty -> no belt restriction.
+  // If only `beltTo` is set -> category "up to" that rank.
+  // If only `beltFrom` is set -> category "above" that rank.
+  // If both set -> category between those ranks.
+  beltFrom: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'BeltRank'
-  }],
+    ref: 'BeltRank',
+    required: false
+  },
+  beltTo: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'BeltRank',
+    required: false
+  },
   tournament: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Tournament',
