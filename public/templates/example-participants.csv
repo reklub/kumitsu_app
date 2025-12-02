@@ -1,0 +1,11 @@
+firstName,lastName,dateOfBirth,gender,weight,beltRank
+Tomasz,Kowalski,2003-05-12,male,78.5,white
+Anna,Lewandowska,2004-08-23,female,62.3,yellow
+Piotr,Nowak,2002-03-15,male,85.0,orange
+Maria,Wiśniewski,2005-11-07,female,68.0,yellow
+Jakub,Dąbrowski,2001-12-30,male,92.5,green
+Katarzyna,Kamiński,2006-02-14,female,55.5,white
+Michał,Zieliński,2000-07-19,male,88.0,blue
+Agnieszka,Grabowski,2005-09-10,female,66.0,orange
+Krzysztof,Szmigiel,1999-01-25,male,95.0,brown
+Natalia,Urbaniak,2004-06-03,female,70.5,green

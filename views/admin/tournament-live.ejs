@@ -29,11 +29,93 @@
     </div>
   </div>
 
-  <!-- Categories and Matches -->
+  <!-- Brackets View -->
   <div class="row mt-4">
-    <% categories.forEach(category => { %>
-      <div class="col-md-6 mb-4">
-        <div class="card">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header bg-success text-white">
+          <i class="fas fa-sitemap"></i> Drabinki turniejowe
+        </div>
+        <div class="card-body">
+          <% if (!categories || categories.length === 0) { %>
+            <p class="text-muted">Brak kategorii w turnieju</p>
+          <% } else { %>
+            <% categories.forEach(category => { %>
+              <div class="category-bracket mb-4">
+                <h5><i class="fas fa-tag"></i> <%= category.name %></h5>
+                <small class="text-muted">Typ: <%= category.bracketType %> | Meczów: <%= category.matchCount %></small>
+                
+                <% if (category.hasMatches) { %>
+                  <div class="bracket-container mt-3">
+                    <div class="d-flex flex-nowrap" style="overflow-x: auto;">
+                      <% category.rounds.forEach(round => { %>
+                        <div class="round-column" style="flex: 0 0 auto; margin-right: 20px; min-width: 280px;">
+                          <div class="round-title-live">
+                            <strong><%= round.name %></strong>
+                            <small class="d-block text-muted">Runda <%= round.number %></small>
+                          </div>
+                          
+                          <% round.matches.forEach(match => { %>
+                            <div class="match-live <%= match.status %>">
+                              <div class="match-number-live">
+                                <small><strong>#<%= match.matchNumber %></strong></small>
+                              </div>
+                              
+                              <div class="participant-live <%= match.winner && match.participant1 && match.winner._id.toString() === match.participant1._id.toString() ? 'winner' : '' %>">
+                                <% if (match.participant1) { %>
+                                  <span><%= match.participant1.firstName %> <%= match.participant1.lastName %></span>
+                                  <% if (match.participant1.beltRank) { %>
+                                    <span class="belt-indicator-live" style="background-color: <%= match.participant1.beltRank.color %>;"></span>
+                                  <% } %>
+                                <% } else { %>
+                                  <span class="text-muted">TBD</span>
+                                <% } %>
+                                <span class="score-live"><%= match.score1 || 0 %></span>
+                              </div>
+                              
+                              <div class="participant-live <%= match.winner && match.participant2 && match.winner._id.toString() === match.participant2._id.toString() ? 'winner' : '' %>">
+                                <% if (match.participant2) { %>
+                                  <span><%= match.participant2.firstName %> <%= match.participant2.lastName %></span>
+                                  <% if (match.participant2.beltRank) { %>
+                                    <span class="belt-indicator-live" style="background-color: <%= match.participant2.beltRank.color %>;"></span>
+                                  <% } %>
+                                <% } else { %>
+                                  <span class="text-muted">TBD</span>
+                                <% } %>
+                                <span class="score-live"><%= match.score2 || 0 %></span>
+                              </div>
+                            </div>
+                          <% }) %>
+                        </div>
+                      <% }) %>
+                    </div>
+                  </div>
+                <% } else { %>
+                  <p class="text-muted mt-2">Brak meczów w tej kategorii. Wygeneruj drabinki.</p>
+                <% } %>
+              </div>
+              <hr>
+            <% }) %>
+          <% } %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Matches Details Section (collapsed by default) -->
+  <div class="row mt-4">
+    <div class="col-12">
+      <button class="btn btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#matchesDetail">
+        <i class="fas fa-chevron-down"></i> Szczegóły meczów
+      </button>
+    </div>
+  </div>
+
+  <div class="collapse mt-3" id="matchesDetail">
+    <div class="row">
+      <% categories.forEach(category => { %>
+        <div class="col-md-6 mb-4">
+          <div class="card">
           <div class="card-header">
             <h5><i class="fas fa-tag"></i> <%= category.name %></h5>
             <small class="text-muted">Typ: <%= category.bracketType %></small>
@@ -141,10 +223,114 @@
         </div>
       </div>
     <% }) %>
+    </div>
   </div>
 </div>
 
 <style>
+/* Brackets styling */
+.bracket-container {
+  overflow-x: auto;
+  padding: 15px 0;
+  background-color: #f8f9fa;
+  border-radius: 5px;
+  margin-top: 15px;
+}
+
+.round-column {
+  display: flex;
+  flex-direction: column;
+}
+
+.round-title-live {
+  text-align: center;
+  font-weight: bold;
+  margin-bottom: 15px;
+  padding: 10px;
+  background-color: #e7f3ff;
+  border: 2px solid #0066cc;
+  border-radius: 5px;
+  color: #0066cc;
+}
+
+.round-title-live small {
+  font-size: 0.75em;
+  font-weight: normal;
+  display: block;
+  margin-top: 5px;
+}
+
+.match-live {
+  margin-bottom: 15px;
+  padding: 8px;
+  border: 2px solid #dee2e6;
+  border-radius: 5px;
+  background-color: white;
+  min-height: 70px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.match-live.completed {
+  background-color: #d4edda;
+  border-color: #28a745;
+}
+
+.match-live.in_progress {
+  background-color: #fff3cd;
+  border-color: #ffc107;
+}
+
+.match-number-live {
+  font-size: 0.85em;
+  color: #666;
+  margin-bottom: 5px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.participant-live {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+  font-size: 0.9em;
+  min-height: 25px;
+}
+
+.participant-live.winner {
+  font-weight: bold;
+  color: #28a745;
+  background-color: rgba(40, 167, 69, 0.1);
+  padding: 4px;
+  border-radius: 3px;
+}
+
+.score-live {
+  font-weight: bold;
+  background-color: #f0f0f0;
+  padding: 2px 6px;
+  border-radius: 3px;
+  min-width: 25px;
+  text-align: center;
+}
+
+.belt-indicator-live {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  margin-left: 5px;
+  vertical-align: middle;
+}
+
+.category-bracket {
+  padding: 15px;
+  background-color: #ffffff;
+  border: 1px solid #dee2e6;
+  border-radius: 5px;
+}
+
+/* Match details styling */
 .match-card {
   transition: all 0.3s ease;
 }

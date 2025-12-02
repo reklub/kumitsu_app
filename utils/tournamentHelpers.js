@@ -2,8 +2,8 @@ const BeltRank = require('../models/BeltRank');
 
 // Function to format gender display
 function getGenderText(gender) {
-  if (gender === 'male') return 'Male';
-  if (gender === 'female') return 'Female';
+  if (gender === 'male') return 'Mężczyzna';
+  if (gender === 'female') return 'Kobieta';
   return gender; // fallback to original value
 }
 

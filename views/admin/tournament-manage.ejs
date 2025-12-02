@@ -72,6 +72,95 @@
     </div>
   </div>
   
+  <!-- Brackets Management Section -->
+  <div class="row mt-4 mb-4">
+    <div class="col-12">
+      <div class="card border-primary">
+        <div class="card-header bg-primary text-white">
+          <i class="fas fa-sitemap"></i> <strong>Zarządzanie drabinkami</strong>
+        </div>
+        <div class="card-body">
+          <div class="alert alert-info">
+            <i class="fas fa-info-circle"></i> 
+            Przed rozpoczęciem turnieju możesz generować i edytować drabinki dla każdej kategorii. 
+            Wybierz kategorię i kliknij przycisk "Wygeneruj drabinkę".
+          </div>
+          
+          <div class="row">
+            <% if (categories && categories.length > 0) { %>
+              <% categories.forEach((category, index) => { %>
+                <div class="col-lg-6 mb-3">
+                  <div class="card border-left-<%= ['primary', 'success', 'info', 'warning'][index % 4] %>">
+                    <div class="card-body">
+                      <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                          <h6 class="card-title"><i class="fas fa-tag"></i> <%= category.name %></h6>
+                          <small class="text-muted d-block">Typ: <strong><%= category.bracketType === 'single_elimination' ? 'Pojedyncza eliminacja' : category.bracketType === 'double_elimination' ? 'Podwójna eliminacja' : 'Każdy z każdym' %></strong></small>
+                          <small class="text-muted d-block">Uczestnicy: <strong><%= category.participants ? category.participants.length : 0 %></strong></small>
+                          
+                          <% if (category.matches && category.matches.length > 0) { %>
+                            <small class="text-success d-block mt-1">
+                              <i class="fas fa-check-circle"></i> Drabinka wygenerowana: <strong><%= category.matches.length %> meczy</strong>
+                            </small>
+                          <% } else { %>
+                            <small class="text-danger d-block mt-1">
+                              <i class="fas fa-times-circle"></i> <strong>Brak wygenerowanej drabinki</strong>
+                            </small>
+                          <% } %>
+                        </div>
+                        
+                        <div class="text-right">
+                          <% if (category.participants && category.participants.length >= 2) { %>
+                            <button class="btn btn-sm btn-success mb-2" onclick="generateCategoryBrackets('<%= category._id %>', '<%= category.name %>')">
+                              <i class="fas fa-magic"></i> Wygeneruj
+                            </button>
+                          <% } else { %>
+                            <button class="btn btn-sm btn-secondary mb-2" disabled>
+                              <i class="fas fa-lock"></i> Mało uczestników
+                            </button>
+                          <% } %>
+                          
+                          <% if (category.matches && category.matches.length > 0) { %>
+                            <a href="/admin/tournaments/<%= tournament._id %>/brackets" class="btn btn-sm btn-info">
+                              <i class="fas fa-eye"></i> Podgląd
+                            </a>
+                          <% } %>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              <% }) %>
+            <% } else { %>
+              <div class="col-12">
+                <div class="alert alert-warning">
+                  <i class="fas fa-exclamation-triangle"></i> 
+                  Brak kategorii w turnieju. Najpierw utwórz kategorie powyżej.
+                </div>
+              </div>
+            <% } %>
+          </div>
+          
+          <hr>
+          
+          <div class="row mt-3">
+            <div class="col-12">
+              <h6>Akcje zbiorcze:</h6>
+              <div class="btn-group" role="group">
+                <button class="btn btn-primary" onclick="generateAllBrackets()">
+                  <i class="fas fa-bolt"></i> Wygeneruj wszystkie drabinki
+                </button>
+                <a href="/admin/tournaments/<%= tournament._id %>/brackets" class="btn btn-info">
+                  <i class="fas fa-eye"></i> Podgląd wszystkich
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Category Management Section -->
   <div class="row mb-4">
     <div class="col-12">
@@ -287,9 +376,6 @@
                           <button class="btn btn-sm btn-warning" onclick="generateCategoryGroups('<%= category._id %>')">
                             <i class="fas fa-users"></i> Grupy
                           </button>
-                          <button class="btn btn-sm btn-success" onclick="generateCategoryBrackets('<%= category._id %>')">
-                            <i class="fas fa-sitemap"></i> Drabinka
-                          </button>
                         </div>
                       </div>
                     </div>
@@ -377,6 +463,46 @@
   border-color: #007bff;
   background-color: #f8f9fa;
 }
+
+/* Brackets Management Styles */
+.border-left-primary {
+  border-left: 5px solid #007bff !important;
+}
+
+.border-left-success {
+  border-left: 5px solid #28a745 !important;
+}
+
+.border-left-info {
+  border-left: 5px solid #17a2b8 !important;
+}
+
+.border-left-warning {
+  border-left: 5px solid #ffc107 !important;
+}
+
+.card-body h6 {
+  margin-bottom: 0.5rem;
+  font-size: 1rem;
+}
+
+.bracket-status {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.bracket-status.generated {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.bracket-status.not-generated {
+  background-color: #f8d7da;
+  color: #721c24;
+}
 </style>
 
 <!-- Skrypty JavaScript -->
@@ -415,8 +541,23 @@ function generateAllGroups() {
 // Generate brackets for all categories
 function generateAllBrackets() {
   if (confirm('Czy na pewno chcesz wygenerować drabinki dla wszystkich kategorii?')) {
-    // This would need to be implemented to get all categories and generate brackets
-    alert('Funkcja w trakcie implementacji');
+    fetch(`/admin/tournaments/<%= tournament._id %>/generate-brackets`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    })
+    .then(response => {
+      if (response.ok) {
+        location.reload();
+      } else {
+        alert('Błąd podczas generowania drabinek');
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      alert('Błąd podczas generowania drabinek');
+    });
   }
 }
 
@@ -536,8 +677,9 @@ function generateCategoryGroups(categoryId) {
 }
 
 // Generate brackets for a specific category
-function generateCategoryBrackets(categoryId) {
-  if (confirm('Czy na pewno chcesz wygenerować drabinkę dla tej kategorii?')) {
+function generateCategoryBrackets(categoryId, categoryName) {
+  const name = categoryName || 'tej kategorii';
+  if (confirm(`Czy na pewno chcesz wygenerować drabinkę dla kategorii "${name}"?`)) {
     fetch(`/admin/tournaments/categories/${categoryId}/generate-brackets`, {
       method: 'POST',
       headers: {

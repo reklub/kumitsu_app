@@ -226,16 +226,31 @@ exports.generateBrackets = async (req, res) => {
     // Clear existing matches for this category
     await Match.deleteMany({ tournament: category.tournament, category: categoryId });
 
-    let matches = [];
+    // Get current max match number from tournament to continue numbering
+    const maxMatch = await Match.findOne({ tournament: category.tournament })
+      .sort({ matchNumber: -1 });
+    const startingMatchNumber = maxMatch ? maxMatch.matchNumber + 1 : 1;
+
+    let result = {};
 
     if (category.bracketType === 'single_elimination') {
-      matches = generateSingleEliminationBracket(category.participants, category.tournament, categoryId);
+      result = generateSingleEliminationBracket(
+        category.participants, 
+        category.tournament, 
+        categoryId,
+        startingMatchNumber
+      );
     } else if (category.bracketType === 'round_robin') {
-      matches = generateRoundRobinMatches(category.participants, category.tournament, categoryId);
+      result = generateRoundRobinMatches(
+        category.participants, 
+        category.tournament, 
+        categoryId,
+        startingMatchNumber
+      );
     }
 
     // Save matches to database
-    const savedMatches = await Match.insertMany(matches);
+    const savedMatches = await Match.insertMany(result.matches);
 
     // Update category with match references
     category.matches = savedMatches.map(match => match._id);
@@ -251,63 +266,68 @@ exports.generateBrackets = async (req, res) => {
 };
 
 // Generate single elimination bracket
-function generateSingleEliminationBracket(participants, tournamentId, categoryId) {
+function generateSingleEliminationBracket(participants, tournamentId, categoryId, startingMatchNumber = 1) {
   const matches = [];
   const numParticipants = participants.length;
   const numRounds = Math.ceil(Math.log2(numParticipants));
+  const totalSlots = Math.pow(2, numRounds);
+  const numByes = totalSlots - numParticipants;
   
-  // Add byes if needed
-  const numByes = Math.pow(2, numRounds) - numParticipants;
-  const participantsWithByes = [...participants];
+  // Shuffle participants for random seeding
+  const shuffledParticipants = [...participants].sort(() => Math.random() - 0.5);
   
-  for (let i = 0; i < numByes; i++) {
-    participantsWithByes.push(null); // null represents a bye
-  }
-
-  // Shuffle participants
-  participantsWithByes.sort(() => Math.random() - 0.5);
-
-  let currentRound = 1;
-  let currentParticipants = participantsWithByes;
-  let matchNumber = 1;
-
-  while (currentParticipants.length > 1) {
-    const nextRoundParticipants = [];
+  // Global match counter
+  let globalMatchNumber = startingMatchNumber;
+  
+  // Create first round matches
+  for (let i = 0; i < totalSlots / 2; i++) {
+    const participant1 = i < numParticipants ? shuffledParticipants[i] : null;
+    const participant2 = (i + totalSlots / 2) < numParticipants ? shuffledParticipants[i + totalSlots / 2] : null;
     
-    for (let i = 0; i < currentParticipants.length; i += 2) {
-      const participant1 = currentParticipants[i];
-      const participant2 = currentParticipants[i + 1];
+    const match = {
+      tournament: tournamentId,
+      category: categoryId,
+      round: 1,
+      matchNumber: globalMatchNumber++,
+      participant1: participant1 ? participant1._id : null,
+      participant2: participant2 ? participant2._id : null,
+      status: 'scheduled'
+    };
+    
+    matches.push(match);
+  }
+  
+  // Create remaining rounds (2 to numRounds) with continuous match numbering
+  let prevRoundMatches = totalSlots / 2;
+  for (let round = 2; round <= numRounds; round++) {
+    const currentRoundMatches = prevRoundMatches / 2;
+    
+    for (let i = 0; i < currentRoundMatches; i++) {
+      const match = {
+        tournament: tournamentId,
+        category: categoryId,
+        round: round,
+        matchNumber: globalMatchNumber++,
+        status: 'scheduled'
+      };
       
-      if (participant1 && participant2) {
-        // Regular match
-        matches.push({
-          tournament: tournamentId,
-          category: categoryId,
-          round: `Round ${currentRound}`,
-          matchNumber: matchNumber++,
-          participant1: participant1._id,
-          participant2: participant2._id,
-          status: 'scheduled'
-        });
-        nextRoundParticipants.push(participant1); // Winner placeholder
-      } else if (participant1 && !participant2) {
-        // Bye - participant1 advances
-        nextRoundParticipants.push(participant1);
-      }
+      matches.push(match);
     }
     
-    currentParticipants = nextRoundParticipants;
-    currentRound++;
+    prevRoundMatches = currentRoundMatches;
   }
 
-  return matches;
+  return {
+    matches,
+    nextMatchNumber: globalMatchNumber
+  };
 }
 
 // Generate round robin matches
-function generateRoundRobinMatches(participants, tournamentId, categoryId) {
+function generateRoundRobinMatches(participants, tournamentId, categoryId, startingMatchNumber = 1) {
   const matches = [];
   const numParticipants = participants.length;
-  let matchNumber = 1;
+  let matchNumber = startingMatchNumber;
 
   // Round robin: each participant plays every other participant once
   for (let i = 0; i < numParticipants; i++) {
@@ -315,7 +335,7 @@ function generateRoundRobinMatches(participants, tournamentId, categoryId) {
       matches.push({
         tournament: tournamentId,
         category: categoryId,
-        round: 'Round Robin',
+        round: 1,
         matchNumber: matchNumber++,
         participant1: participants[i]._id,
         participant2: participants[j]._id,
@@ -324,7 +344,10 @@ function generateRoundRobinMatches(participants, tournamentId, categoryId) {
     }
   }
 
-  return matches;
+  return {
+    matches,
+    nextMatchNumber: matchNumber
+  };
 }
 
 // Start tournament - begin the first matches
@@ -408,9 +431,52 @@ exports.getLiveTournament = async (req, res) => {
         }
       });
 
+    // Process bracket data for rendering (same as in getBrackets)
+    const processedCategories = categories.map(category => {
+      const matches = category.matches || [];
+      
+      // Group matches by round
+      const roundsMap = {};
+      matches.forEach(match => {
+        if (!roundsMap[match.round]) {
+          roundsMap[match.round] = [];
+        }
+        roundsMap[match.round].push(match);
+      });
+      
+      // Get round numbers sorted
+      const roundNumbers = Object.keys(roundsMap)
+        .map(k => parseInt(k))
+        .sort((a, b) => a - b);
+      
+      const totalRounds = roundNumbers.length > 0 ? Math.max(...roundNumbers) : 1;
+      
+      // Helper to get Polish round name
+      const getRoundName = (roundNum) => {
+        if (roundNum === totalRounds) return 'Finał';
+        if (roundNum === totalRounds - 1) return 'Półfinały';
+        if (roundNum === totalRounds - 2) return 'Ćwierćfinały';
+        return 'Runda ' + roundNum;
+      };
+      
+      // Build rounds array with round names
+      const rounds = roundNumbers.map(roundNum => ({
+        number: roundNum,
+        name: getRoundName(roundNum),
+        matches: roundsMap[roundNum].sort((a, b) => a.matchNumber - b.matchNumber)
+      }));
+      
+      return {
+        ...category.toObject(),
+        rounds,
+        matchCount: matches.length,
+        hasMatches: matches.length > 0
+      };
+    });
+
     res.render('admin/tournament-live', {
       tournament,
-      categories
+      categories: processedCategories
     });
   } catch (error) {
     console.error('Error getting live tournament:', error);
@@ -494,9 +560,84 @@ exports.getBrackets = async (req, res) => {
         }
       });
 
+    // Process bracket data for rendering
+    const processedCategories = categories.map(category => {
+      const matches = category.matches || [];
+      
+      // Group matches by round
+      const roundsMap = {};
+      matches.forEach(match => {
+        if (!roundsMap[match.round]) {
+          roundsMap[match.round] = [];
+        }
+        roundsMap[match.round].push(match);
+      });
+      
+      // Get round numbers sorted
+      const roundNumbers = Object.keys(roundsMap)
+        .map(k => parseInt(k))
+        .sort((a, b) => a - b);
+      
+      const totalRounds = roundNumbers.length > 0 ? Math.max(...roundNumbers) : 1;
+      
+      // Helper to get Polish round name
+      const getRoundName = (roundNum) => {
+        if (roundNum === totalRounds) return 'Finał';
+        if (roundNum === totalRounds - 1) return 'Półfinały';
+        if (roundNum === totalRounds - 2) return 'Ćwierćfinały';
+        return 'Runda ' + roundNum;
+      };
+      
+      // Build rounds array with round names
+      const rounds = roundNumbers.map(roundNum => ({
+        number: roundNum,
+        name: getRoundName(roundNum),
+        matches: roundsMap[roundNum].sort((a, b) => a.matchNumber - b.matchNumber)
+      }));
+      
+      // For round-robin: calculate standings
+      let standings = [];
+      if (category.bracketType === 'round_robin') {
+        const standingsMap = {};
+        category.participants.forEach(participant => {
+          standingsMap[participant._id] = {
+            participant: participant,
+            matches: 0,
+            wins: 0,
+            points: 0
+          };
+        });
+        
+        matches.forEach(match => {
+          if (match.status === 'completed' && match.participant1 && match.participant2) {
+            standingsMap[match.participant1._id].matches++;
+            standingsMap[match.participant2._id].matches++;
+            
+            if (match.winner) {
+              standingsMap[match.winner._id].wins++;
+              standingsMap[match.winner._id].points += 3;
+            }
+          }
+        });
+        
+        standings = Object.values(standingsMap).sort((a, b) => {
+          if (b.points !== a.points) return b.points - a.points;
+          return b.wins - a.wins;
+        });
+      }
+      
+      return {
+        ...category.toObject(),
+        rounds,
+        standings,
+        matchCount: matches.length,
+        hasMatches: matches.length > 0
+      };
+    });
+
     res.render('matches/brackets', {
       tournament,
-      categories
+      categories: processedCategories
     });
   } catch (error) {
     console.error('Error getting brackets:', error);

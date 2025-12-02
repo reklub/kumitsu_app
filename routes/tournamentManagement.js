@@ -31,8 +31,4 @@ router.post('/matches/:matchId/cancel', authMiddleware, tournamentManagementCont
 router.get('/:tournamentId/current-matches', authMiddleware, tournamentManagementController.getCurrentMatches);
 router.get('/:tournamentId/stats', authMiddleware, tournamentManagementController.getTournamentStats);
 
-// Additional tournament management routes
-router.post('/:tournamentId/prepare', authMiddleware, tournamentController.prepareTournament);
-router.post('/:tournamentId/generate-brackets', authMiddleware, tournamentController.generateBrackets);
-
 module.exports = router;

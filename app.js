@@ -72,13 +72,25 @@ app.use((req,res,next) => {
     next();
 })
 
+// API endpoint to get available belt ranks
+app.get('/api/belt-ranks', async (req, res) => {
+    try {
+        const BeltRank = require('./models/BeltRank');
+        const beltRanks = await BeltRank.find().sort({ order: 1 });
+        res.json(beltRanks);
+    } catch (error) {
+        console.error('Error fetching belt ranks:', error);
+        res.status(500).json({ error: 'Failed to fetch belt ranks' });
+    }
+});
+
 app.use('/', userRoutes);
+app.use('/', participants)
 app.use('/tournaments', tournaments)
 app.use('/admin/tournaments', tournamentManagement)
 app.use('/admin', adminRoutes)
 app.use('/', categories)
 app.use('/', matches)
-app.use('/', participants)
 
 app.all('*', (req,res,next) => {
     next(new ExpressError('Page Not Found', 404))

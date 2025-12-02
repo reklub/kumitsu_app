@@ -20,15 +20,138 @@
         <div class="card">
           <div class="card-header">
             <h4><i class="fas fa-tag"></i> <%= category.name %></h4>
-            <small class="text-muted">Typ: <%= category.bracketType %></small>
+            <small class="text-muted">Typ: <%= category.bracketType %> | Meczów: <%= category.matchCount %></small>
           </div>
           <div class="card-body">
-            <% if (category.bracketType === 'single_elimination') { %>
-              <%= renderSingleEliminationBracket(category) %>
+            <% if (!category.hasMatches) { %>
+              <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i> Brak wygenerowanych meczów dla tej kategorii
+              </div>
+            <% } else if (category.bracketType === 'single_elimination') { %>
+              <!-- Single Elimination Bracket - Professional Display -->
+              <div class="bracket-display">
+                <div class="bracket-wrapper">
+                  <% category.rounds.forEach((round, roundIndex) => { %>
+                    <div class="bracket-round">
+                      <div class="round-label">
+                        <div class="round-name"><%= round.name %></div>
+                        <div class="round-matches"><%= round.matches.length %> meczów</div>
+                      </div>
+                      <div class="matches-column">
+                        <% round.matches.forEach((match, matchIndex) => { %>
+                          <div class="bracket-match <%= match.status %>" data-match-id="<%= match._id %>">
+                            <div class="match-box">
+                              <div class="match-number">#<%= match.matchNumber %></div>
+                              
+                              <div class="competitor <%= match.winner && match.winner._id.toString() === (match.participant1 ? match.participant1._id.toString() : '') ? 'winner' : '' %>">
+                                <div class="competitor-name">
+                                  <% if (match.participant1) { %>
+                                    <% if (match.participant1.beltRank) { %>
+                                      <span class="belt-color" style="background-color: <%= match.participant1.beltRank.color %>;"></span>
+                                    <% } %>
+                                    <span><%= match.participant1.firstName %> <%= match.participant1.lastName %></span>
+                                  <% } else { %>
+                                    <span class="text-muted">TBD</span>
+                                  <% } %>
+                                </div>
+                                <div class="competitor-score"><%= match.score1 || '-' %></div>
+                              </div>
+                              
+                              <div class="match-divider"></div>
+                              
+                              <div class="competitor <%= match.winner && match.winner._id.toString() === (match.participant2 ? match.participant2._id.toString() : '') ? 'winner' : '' %>">
+                                <div class="competitor-name">
+                                  <% if (match.participant2) { %>
+                                    <% if (match.participant2.beltRank) { %>
+                                      <span class="belt-color" style="background-color: <%= match.participant2.beltRank.color %>;"></span>
+                                    <% } %>
+                                    <span><%= match.participant2.firstName %> <%= match.participant2.lastName %></span>
+                                  <% } else { %>
+                                    <span class="text-muted">TBD</span>
+                                  <% } %>
+                                </div>
+                                <div class="competitor-score"><%= match.score2 || '-' %></div>
+                              </div>
+                              
+                              <% if (match.court || match.scheduledTime) { %>
+                                <div class="match-meta">
+                                  <% if (match.court) { %><small>Boisko: <%= match.court %></small><% } %>
+                                  <% if (match.scheduledTime) { %><small><%= new Date(match.scheduledTime).toLocaleTimeString() %></small><% } %>
+                                </div>
+                              <% } %>
+                            </div>
+                          </div>
+                        <% }) %>
+                      </div>
+                    </div>
+                  <% }) %>
+                </div>
+              </div>
             <% } else if (category.bracketType === 'round_robin') { %>
-              <%= renderRoundRobinBracket(category) %>
+              <!-- Round Robin Standings -->
+              <h5 class="mb-3">Tabela Wyników:</h5>
+              <table class="round-robin-table mb-4">
+                <thead>
+                  <tr>
+                    <th>Uczestnik</th>
+                    <th>Mecze</th>
+                    <th>Wygrane</th>
+                    <th>Punkty</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% category.standings.forEach((standing, index) => { %>
+                    <tr>
+                      <td>
+                        <strong><%= standing.participant.firstName %> <%= standing.participant.lastName %></strong>
+                        <% if (standing.participant.beltRank) { %>
+                          <span class="belt-indicator" style="background-color: <%= standing.participant.beltRank.color %>;"></span>
+                        <% } %>
+                      </td>
+                      <td><%= standing.matches %></td>
+                      <td><%= standing.wins %></td>
+                      <td><strong><%= standing.points %></strong></td>
+                    </tr>
+                  <% }) %>
+                </tbody>
+              </table>
+              
+              <!-- Round Robin Matches -->
+              <h5 class="mb-3">Mecze (Każdy z każdym):</h5>
+              <div class="row">
+                <% const sortedMatches = category.matches.sort((a, b) => a.matchNumber - b.matchNumber); %>
+                <% sortedMatches.forEach(match => { %>
+                  <div class="col-md-6 mb-2">
+                    <div class="match <%= match.status %>">
+                      <div class="match-number"><strong>Mecz #<%= match.matchNumber %></strong></div>
+                      <div class="participant">
+                        <span class="participant-name">
+                          <%= match.participant1 ? match.participant1.firstName + ' ' + match.participant1.lastName : 'TBD' %>
+                          <% if (match.participant1 && match.participant1.beltRank) { %>
+                            <span class="belt-indicator" style="background-color: <%= match.participant1.beltRank.color %>;"></span>
+                          <% } %>
+                        </span>
+                        <span class="participant-score"><%= match.score1 || 0 %></span>
+                      </div>
+                      <div class="participant">
+                        <span class="participant-name">
+                          <%= match.participant2 ? match.participant2.firstName + ' ' + match.participant2.lastName : 'TBD' %>
+                          <% if (match.participant2 && match.participant2.beltRank) { %>
+                            <span class="belt-indicator" style="background-color: <%= match.participant2.beltRank.color %>;"></span>
+                          <% } %>
+                        </span>
+                        <span class="participant-score"><%= match.score2 || 0 %></span>
+                      </div>
+                      <div class="match-info">
+                        <% if (match.court) { %>Boisko: <%= match.court %><% } %>
+                        <% if (match.scheduledTime) { %> | <%= new Date(match.scheduledTime).toLocaleTimeString() %><% } %>
+                      </div>
+                    </div>
+                  </div>
+                <% }) %>
+              </div>
             <% } else { %>
-              <p class="text-muted">Typ drabinki nie jest jeszcze obsługiwany</p>
+              <p class="text-muted">Typ drabinki nie jest obsługiwany</p>
             <% } %>
           </div>
         </div>
@@ -38,96 +161,214 @@
 </div>
 
 <style>
-.bracket-container {
+/* === PROFESSIONAL BRACKET DISPLAY === */
+
+.bracket-display {
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  padding: 30px 20px;
+  border-radius: 10px;
   overflow-x: auto;
-  padding: 20px 0;
+  min-height: 400px;
 }
 
-.round {
-  display: inline-block;
-  vertical-align: top;
-  margin: 0 20px;
-  min-width: 200px;
-}
-
-.round-title {
-  text-align: center;
-  font-weight: bold;
-  margin-bottom: 20px;
-  padding: 10px;
-  background-color: #f8f9fa;
-  border-radius: 5px;
-}
-
-.match {
-  margin-bottom: 20px;
-  padding: 10px;
-  border: 1px solid #dee2e6;
-  border-radius: 5px;
-  background-color: white;
-  min-height: 60px;
-  position: relative;
-}
-
-.match.completed {
-  background-color: #d4edda;
-  border-color: #c3e6cb;
-}
-
-.match.in-progress {
-  background-color: #fff3cd;
-  border-color: #ffeaa7;
-}
-
-.participant {
+.bracket-wrapper {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 5px 0;
-  min-height: 30px;
+  gap: 0;
+  padding: 20px 10px;
+  min-width: 100%;
 }
 
-.participant.winner {
-  font-weight: bold;
-  color: #28a745;
+.bracket-round {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  min-width: 220px;
+  border-right: 2px solid rgba(0,0,0,0.1);
+  padding-right: 15px;
 }
 
-.participant-name {
+.bracket-round:last-child {
+  border-right: none;
+}
+
+.round-label {
+  text-align: center;
+  padding: 15px 10px;
+  background: rgba(255,255,255,0.7);
+  border-radius: 8px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.round-name {
+  font-weight: 700;
+  font-size: 1.1em;
+  color: #2c3e50;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.round-matches {
+  font-size: 0.85em;
+  color: #7f8c8d;
+  margin-top: 5px;
+}
+
+.matches-column {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
   flex: 1;
 }
 
-.participant-score {
-  font-weight: bold;
-  margin-left: 10px;
+.bracket-match {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  min-height: 140px;
+  margin: 5px 0;
 }
 
-.match-info {
-  text-align: center;
-  font-size: 0.8em;
-  color: #6c757d;
-  margin-top: 5px;
+.match-box {
+  width: 100%;
+  background: white;
+  border: 2px solid #bdc3c7;
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  transition: all 0.3s ease;
 }
+
+.match-box:hover {
+  box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+  border-color: #3498db;
+}
+
+.bracket-match.completed .match-box {
+  background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+  border-color: #28a745;
+}
+
+.bracket-match.in-progress .match-box {
+  background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+  border-color: #ffc107;
+  animation: pulse-warning 2s infinite;
+}
+
+@keyframes pulse-warning {
+  0%, 100% { box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3); }
+  50% { box-shadow: 0 4px 16px rgba(255, 193, 7, 0.6); }
+}
+
+.match-number {
+  background: #34495e;
+  color: white;
+  padding: 6px 10px;
+  font-size: 0.85em;
+  font-weight: 700;
+  text-align: center;
+}
+
+.competitor {
+  padding: 10px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.95em;
+  transition: background 0.2s;
+}
+
+.competitor:hover {
+  background: rgba(52, 152, 219, 0.05);
+}
+
+.competitor.winner {
+  background: rgba(40, 167, 69, 0.08);
+  font-weight: 600;
+  color: #28a745;
+}
+
+.competitor-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.belt-color {
+  flex-shrink: 0;
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  border: 1px solid #555;
+}
+
+.competitor-score {
+  font-weight: 700;
+  font-size: 1.1em;
+  color: #2c3e50;
+  min-width: 30px;
+  text-align: right;
+  padding-left: 10px;
+}
+
+.match-divider {
+  height: 1px;
+  background: #ecf0f1;
+}
+
+.match-meta {
+  background: #f8f9fa;
+  padding: 6px 10px;
+  font-size: 0.8em;
+  color: #7f8c8d;
+  text-align: center;
+  border-top: 1px solid #ecf0f1;
+}
+
+.match-meta small {
+  display: block;
+}
+
+/* === ROUND ROBIN TABLE === */
 
 .round-robin-table {
   width: 100%;
   border-collapse: collapse;
-}
-
-.round-robin-table th,
-.round-robin-table td {
-  border: 1px solid #dee2e6;
-  padding: 8px;
-  text-align: center;
+  margin-top: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
 .round-robin-table th {
-  background-color: #f8f9fa;
-  font-weight: bold;
+  background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%);
+  color: white;
+  padding: 12px 8px;
+  text-align: center;
+  font-weight: 700;
+  border: 1px solid #2c3e50;
+}
+
+.round-robin-table td {
+  border: 1px solid #dee2e6;
+  padding: 12px 8px;
+  text-align: center;
 }
 
 .round-robin-table tr:nth-child(even) {
   background-color: #f8f9fa;
 }
+
+.round-robin-table tr:hover {
+  background-color: #e8f4f8;
+}
+
+.round-robin-table td:first-child {
+  text-align: left;
+  font-weight: 600;
+}
+
 
 .belt-indicator {
   display: inline-block;
@@ -147,154 +388,3 @@ setInterval(() => {
 </script>
 
 <%- include('../partials/footer') %>
-
-<% function renderSingleEliminationBracket(category) { %>
-  <div class="bracket-container">
-    <% 
-      const matches = category.matches || [];
-      const rounds = {};
-      
-      // Group matches by round
-      matches.forEach(match => {
-        if (!rounds[match.round]) {
-          rounds[match.round] = [];
-        }
-        rounds[match.round].push(match);
-      });
-      
-      const roundNames = Object.keys(rounds).sort();
-    %>
-    
-    <% roundNames.forEach(roundName => { %>
-      <div class="round">
-        <div class="round-title"><%= roundName %></div>
-        <% rounds[roundName].forEach(match => { %>
-          <div class="match <%= match.status %>">
-            <div class="participant <%= match.winner && match.winner._id.toString() === match.participant1._id.toString() ? 'winner' : '' %>">
-              <span class="participant-name">
-                <% if (match.participant1) { %>
-                  <%= match.participant1.firstName %> <%= match.participant1.lastName %>
-                  <% if (match.participant1.beltRank) { %>
-                    <span class="belt-indicator" style="background-color: <%= match.participant1.beltRank.color %>;"></span>
-                  <% } %>
-                <% } else { %>
-                  TBD
-                <% } %>
-              </span>
-              <span class="participant-score"><%= match.score1 || 0 %></span>
-            </div>
-            <div class="participant <%= match.winner && match.winner._id.toString() === match.participant2._id.toString() ? 'winner' : '' %>">
-              <span class="participant-name">
-                <% if (match.participant2) { %>
-                  <%= match.participant2.firstName %> <%= match.participant2.lastName %>
-                  <% if (match.participant2.beltRank) { %>
-                    <span class="belt-indicator" style="background-color: <%= match.participant2.beltRank.color %>;"></span>
-                  <% } %>
-                <% } else { %>
-                  TBD
-                <% } %>
-              </span>
-              <span class="participant-score"><%= match.score2 || 0 %></span>
-            </div>
-            <div class="match-info">
-              <% if (match.court) { %>Boisko: <%= match.court %><% } %>
-              <% if (match.scheduledTime) { %> | <%= new Date(match.scheduledTime).toLocaleTimeString() %><% } %>
-            </div>
-          </div>
-        <% }) %>
-      </div>
-    <% }) %>
-  </div>
-<% } %>
-
-<% function renderRoundRobinBracket(category) { %>
-  <div class="round-robin-container">
-    <table class="round-robin-table">
-      <thead>
-        <tr>
-          <th>Uczestnik</th>
-          <th>Mecze</th>
-          <th>Wygrane</th>
-          <th>Punkty</th>
-        </tr>
-      </thead>
-      <tbody>
-        <% 
-          const participants = category.participants || [];
-          const matches = category.matches || [];
-          
-          // Calculate standings
-          const standings = {};
-          participants.forEach(participant => {
-            standings[participant._id] = {
-              participant: participant,
-              matches: 0,
-              wins: 0,
-              points: 0
-            };
-          });
-          
-          matches.forEach(match => {
-            if (match.status === 'completed' && match.participant1 && match.participant2) {
-              standings[match.participant1._id].matches++;
-              standings[match.participant2._id].matches++;
-              
-              if (match.winner) {
-                standings[match.winner._id].wins++;
-                standings[match.winner._id].points += 3;
-              }
-            }
-          });
-          
-          // Sort by points, then by wins
-          const sortedStandings = Object.values(standings).sort((a, b) => {
-            if (b.points !== a.points) return b.points - a.points;
-            return b.wins - a.wins;
-          });
-        %>
-        
-        <% sortedStandings.forEach((standing, index) => { %>
-          <tr>
-            <td>
-              <strong><%= standing.participant.firstName %> <%= standing.participant.lastName %></strong>
-              <% if (standing.participant.beltRank) { %>
-                <span class="belt-indicator" style="background-color: <%= standing.participant.beltRank.color %>;"></span>
-              <% } %>
-            </td>
-            <td><%= standing.matches %></td>
-            <td><%= standing.wins %></td>
-            <td><strong><%= standing.points %></strong></td>
-          </tr>
-        <% }) %>
-      </tbody>
-    </table>
-    
-    <div class="mt-4">
-      <h5>Mecze:</h5>
-      <div class="row">
-        <% matches.forEach(match => { %>
-          <div class="col-md-6 mb-2">
-            <div class="match <%= match.status %>">
-              <div class="participant">
-                <span class="participant-name">
-                  <%= match.participant1 ? match.participant1.firstName + ' ' + match.participant1.lastName : 'TBD' %>
-                </span>
-                <span class="participant-score"><%= match.score1 || 0 %></span>
-              </div>
-              <div class="participant">
-                <span class="participant-name">
-                  <%= match.participant2 ? match.participant2.firstName + ' ' + match.participant2.lastName : 'TBD' %>
-                </span>
-                <span class="participant-score"><%= match.score2 || 0 %></span>
-              </div>
-              <div class="match-info">
-                <% if (match.court) { %>Boisko: <%= match.court %><% } %>
-                <% if (match.scheduledTime) { %> | <%= new Date(match.scheduledTime).toLocaleTimeString() %><% } %>
-              </div>
-            </div>
-          </div>
-        <% }) %>
-      </div>
-    </div>
-  </div>
-<% } %>

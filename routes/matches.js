@@ -76,14 +76,16 @@ router.post('/tournaments/:tournamentId/categories/:categoryId/generate-brackets
     // Create all matches structure first
     const matches = [];
     
+    // Global match counter for continuous numbering across all phases
+    let globalMatchNumber = 1;
+    
     // First round with participants and byes
-    let matchNumber = 1;
     for (let i = 0; i < totalSlots / 2; i++) {
       const match = new Match({
         tournament: tournamentId,
         category: categoryId,
         round: 1,
-        matchNumber: matchNumber++
+        matchNumber: globalMatchNumber++
       });
       
       // Assign participants to first round matches
@@ -105,8 +107,18 @@ router.post('/tournaments/:tournamentId/categories/:categoryId/generate-brackets
       matches.push(match);
     }
     
-    // Create remaining rounds structure
+    // Create remaining rounds structure - REVERSED ORDER (finals first, then semi-finals, etc.)
+    // This ensures match numbers go from early rounds to finals
+    const roundMatches = {};
     let prevRoundMatches = totalSlots / 2;
+    for (let round = 2; round <= numRounds; round++) {
+      const currentRoundMatches = prevRoundMatches / 2;
+      roundMatches[round] = currentRoundMatches;
+      prevRoundMatches = currentRoundMatches;
+    }
+    
+    // Add matches for rounds 2 to numRounds with continuous numbering
+    prevRoundMatches = totalSlots / 2;
     for (let round = 2; round <= numRounds; round++) {
       const currentRoundMatches = prevRoundMatches / 2;
       
@@ -115,7 +127,7 @@ router.post('/tournaments/:tournamentId/categories/:categoryId/generate-brackets
           tournament: tournamentId,
           category: categoryId,
           round: round,
-          matchNumber: matchNumber++
+          matchNumber: globalMatchNumber++
         });
         
         matches.push(match);
