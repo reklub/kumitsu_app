@@ -11,6 +11,7 @@ router.get('/', authMiddleware, (req, res) => {
 
 // Tournament management routes
 router.get('/tournaments', authMiddleware, tournamentController.showTournamentList);
+router.get('/tournaments/:id/brackets', authMiddleware, tournamentController.showBrackets);
 router.post('/tournaments/:id/prepare', authMiddleware, tournamentController.prepareTournament);
 router.post('/tournaments/:id/generate-brackets', authMiddleware, tournamentController.generateBrackets);
 router.post('/tournaments/:id/generate-groups', authMiddleware, tournamentController.generateGroups);

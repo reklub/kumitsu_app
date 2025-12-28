@@ -1,8 +1,9 @@
-const Tournament = require('../models/Tournament');
+﻿const Tournament = require('../models/Tournament');
 const Category = require('../models/Category');
 const Participant = require('../models/Participant');
 const Match = require('../models/Match');
 const BeltRank = require('../models/BeltRank');
+const { generateSingleEliminationBracket, generateRoundRobinMatches } = require('../utils/bracketGenerator');
 
 // Helper function to auto-assign a single participant to categories
 async function assignParticipantToCategory(participant, tournament) {
@@ -27,7 +28,7 @@ async function assignParticipantToCategory(participant, tournament) {
       if (category.beltTo) console.log(`  Belt to order: ${category.beltTo.order}`);
       
       if (matchesCategory(participant, age, category)) {
-        console.log(`✓ MATCH! Adding to category: ${category.name}`);
+        console.log(`âś“ MATCH! Adding to category: ${category.name}`);
         // Add participant to category if not already there
         if (!category.participants.includes(participant._id)) {
           category.participants.push(participant._id);
@@ -35,11 +36,11 @@ async function assignParticipantToCategory(participant, tournament) {
         }
         return category;
       } else {
-        console.log(`✗ No match for ${category.name}`);
+        console.log(`âś— No match for ${category.name}`);
       }
     }
     
-    console.log(`\n✗ Participant ${participant.firstName} ${participant.lastName} did not match any category\n`);
+    console.log(`\nâś— Participant ${participant.firstName} ${participant.lastName} did not match any category\n`);
     return null;
   } catch (error) {
     console.error('Error assigning participant to category:', error);
@@ -67,11 +68,11 @@ exports.createCategory = async (req, res) => {
     });
 
     await category.save();
-    req.flash('success', 'Kategoria została utworzona');
+    req.flash('success', 'Kategoria zostaĹ‚a utworzona');
     res.redirect(`/admin/tournaments/${tournamentId}/manage`);
   } catch (error) {
     console.error('Error creating category:', error);
-    req.flash('error', 'Błąd podczas tworzenia kategorii');
+    req.flash('error', 'BĹ‚Ä…d podczas tworzenia kategorii');
     res.redirect('back');
   }
 };
@@ -117,7 +118,7 @@ exports.autoAssignParticipants = async (req, res) => {
     res.redirect(`/admin/tournaments/${tournamentId}/manage`);
   } catch (error) {
     console.error('Error auto-assigning participants:', error);
-    req.flash('error', 'Błąd podczas automatycznego przypisywania uczestników');
+    req.flash('error', 'BĹ‚Ä…d podczas automatycznego przypisywania uczestnikĂłw');
     res.redirect('back');
   }
 };
@@ -126,27 +127,27 @@ exports.autoAssignParticipants = async (req, res) => {
 function matchesCategory(participant, age, category) {
   // Check gender
   if (category.gender && category.gender !== 'mixed' && participant.gender !== category.gender) {
-    console.log(`    ✗ Gender mismatch: ${participant.gender} != ${category.gender}`);
+    console.log(`    âś— Gender mismatch: ${participant.gender} != ${category.gender}`);
     return false;
   }
 
   // Check age
   if (category.ageMin && age < category.ageMin) {
-    console.log(`    ✗ Age too low: ${age} < ${category.ageMin}`);
+    console.log(`    âś— Age too low: ${age} < ${category.ageMin}`);
     return false;
   }
   if (category.ageMax && age > category.ageMax) {
-    console.log(`    ✗ Age too high: ${age} > ${category.ageMax}`);
+    console.log(`    âś— Age too high: ${age} > ${category.ageMax}`);
     return false;
   }
 
   // Check weight
   if (category.weightMin && participant.weight < category.weightMin) {
-    console.log(`    ✗ Weight too low: ${participant.weight} < ${category.weightMin}`);
+    console.log(`    âś— Weight too low: ${participant.weight} < ${category.weightMin}`);
     return false;
   }
   if (category.weightMax && participant.weight > category.weightMax) {
-    console.log(`    ✗ Weight too high: ${participant.weight} > ${category.weightMax}`);
+    console.log(`    âś— Weight too high: ${participant.weight} > ${category.weightMax}`);
     return false;
   }
 
@@ -156,13 +157,13 @@ function matchesCategory(participant, age, category) {
     
     // If beltFrom is set, participant must be at or above that rank (higher or equal order)
     if (category.beltFrom && participantBeltOrder < category.beltFrom.order) {
-      console.log(`    ✗ Belt rank too low: ${participantBeltOrder} < ${category.beltFrom.order}`);
+      console.log(`    âś— Belt rank too low: ${participantBeltOrder} < ${category.beltFrom.order}`);
       return false;
     }
     
     // If beltTo is set, participant must be at or below that rank (lower or equal order)
     if (category.beltTo && participantBeltOrder > category.beltTo.order) {
-      console.log(`    ✗ Belt rank too high: ${participantBeltOrder} > ${category.beltTo.order}`);
+      console.log(`    âś— Belt rank too high: ${participantBeltOrder} > ${category.beltTo.order}`);
       return false;
     }
   }
@@ -179,7 +180,7 @@ exports.generateGroups = async (req, res) => {
     const category = await Category.findById(categoryId).populate('participants');
     
     if (category.participants.length === 0) {
-      req.flash('error', 'Brak uczestników w tej kategorii');
+      req.flash('error', 'Brak uczestnikĂłw w tej kategorii');
       return res.redirect('back');
     }
 
@@ -207,7 +208,7 @@ exports.generateGroups = async (req, res) => {
     res.redirect(`/admin/tournaments/${category.tournament}/manage`);
   } catch (error) {
     console.error('Error generating groups:', error);
-    req.flash('error', 'Błąd podczas generowania grup');
+    req.flash('error', 'BĹ‚Ä…d podczas generowania grup');
     res.redirect('back');
   }
 };
@@ -217,138 +218,134 @@ exports.generateBrackets = async (req, res) => {
   try {
     const { categoryId } = req.params;
     const category = await Category.findById(categoryId).populate('participants');
+    const tournament = await Tournament.findById(category.tournament);
 
     if (category.participants.length < 2) {
-      req.flash('error', 'Potrzeba co najmniej 2 uczestników do wygenerowania drabinki');
+      req.flash('error', 'Potrzeba co najmniej 2 uczestnikĂłw do wygenerowania drabinki');
       return res.redirect('back');
     }
 
-    // Clear existing matches for this category
-    await Match.deleteMany({ tournament: category.tournament, category: categoryId });
+    // Get all categories for this tournament and sort by participant count (descending)
+    const allCategories = await Category.find({ tournament: category.tournament })
+      .populate('participants');
+    const sortedCategories = allCategories.sort((a, b) => b.participants.length - a.participants.length);
 
-    // Get current max match number from tournament to continue numbering
-    const maxMatch = await Match.findOne({ tournament: category.tournament })
-      .sort({ matchNumber: -1 });
-    const startingMatchNumber = maxMatch ? maxMatch.matchNumber + 1 : 1;
+    // Delete all existing matches for entire tournament
+    await Match.deleteMany({ tournament: category.tournament });
 
-    let result = {};
+    // Generate bracket structure for each category
+    const bracketsByCategory = {};
+    for (const cat of sortedCategories) {
+      if (cat.participants.length < 2) {
+        continue;
+      }
 
-    if (category.bracketType === 'single_elimination') {
-      result = generateSingleEliminationBracket(
-        category.participants, 
-        category.tournament, 
-        categoryId,
-        startingMatchNumber
-      );
-    } else if (category.bracketType === 'round_robin') {
-      result = generateRoundRobinMatches(
-        category.participants, 
-        category.tournament, 
-        categoryId,
-        startingMatchNumber
-      );
+      let result = {};
+
+      if (cat.bracketType === 'single_elimination') {
+        result = generateSingleEliminationBracket(
+          cat.participants, 
+          category.tournament, 
+          cat._id,
+          1  // Will renumber later
+        );
+      } else if (cat.bracketType === 'round_robin') {
+        result = generateRoundRobinMatches(
+          cat.participants, 
+          category.tournament, 
+          cat._id,
+          1  // Will renumber later
+        );
+      }
+
+      bracketsByCategory[cat._id] = {
+        category: cat,
+        rounds: result.rounds || [],
+        matches: result.matches || [],
+        bracketType: cat.bracketType
+      };
     }
 
-    // Save matches to database
-    const savedMatches = await Match.insertMany(result.matches);
+    // Now renumber matches: phase by phase across all categories
+    let globalMatchNumber = 1;
+    const maxRounds = Math.max(...Object.values(bracketsByCategory).map(b => b.rounds.length || 1));
 
-    // Update category with match references
-    category.matches = savedMatches.map(match => match._id);
-    await category.save();
+    // For each round/phase
+    for (let roundNum = 1; roundNum <= maxRounds; roundNum++) {
+      // For each category (in sorted order)
+      for (const cat of sortedCategories) {
+        const bracket = bracketsByCategory[cat._id];
 
-    req.flash('success', `Wygenerowano drabinkę dla kategorii ${category.name}`);
+        if (!bracket) continue;
+
+        // Get matches for this round
+        if (bracket.bracketType === 'single_elimination' && bracket.rounds.length > 0) {
+          const roundData = bracket.rounds[roundNum - 1];
+          if (roundData) {
+            // Renumber matches in this round
+            for (const match of roundData.matches) {
+              match.matchNumber = globalMatchNumber++;
+            }
+          }
+        } else if (bracket.bracketType === 'round_robin' && roundNum === 1) {
+          // Round robin: all matches are in one phase
+          for (const match of bracket.matches) {
+            match.matchNumber = globalMatchNumber++;
+          }
+        }
+      }
+    }
+
+    // Collect all matches and save to database
+    const allMatches = [];
+    const matchIndexMap = {}; // Map to track match indices for category assignment
+    
+    for (const bracket of Object.values(bracketsByCategory)) {
+      let matches = [];
+      if (bracket.bracketType === 'single_elimination') {
+        matches = bracket.rounds.flatMap(r => r.matches);
+      } else {
+        matches = bracket.matches;
+      }
+      
+      // Tag matches with their index for later identification
+      matches.forEach((m, idx) => {
+        const key = `${m.category}_${m.matchNumber}_${m.round}`;
+        matchIndexMap[key] = allMatches.length + idx;
+      });
+      
+      allMatches.push(...matches);
+    }
+
+    const savedMatches = await Match.insertMany(allMatches);
+
+    // Update categories with match references - use indices instead of searching
+    for (const cat of sortedCategories) {
+      const bracket = bracketsByCategory[cat._id];
+      if (bracket) {
+        const categoryMatches = bracket.bracketType === 'single_elimination' 
+          ? bracket.rounds.flatMap(r => r.matches)
+          : bracket.matches;
+
+        const matchIds = categoryMatches.map(m => {
+          const key = `${m.category}_${m.matchNumber}_${m.round}`;
+          const idx = matchIndexMap[key];
+          return idx !== undefined ? savedMatches[idx]._id : null;
+        }).filter(id => id !== null);
+
+        cat.matches = matchIds;
+        await cat.save();
+      }
+    }
+
+    req.flash('success', `Drabinki zostaĹ‚y wygenerowane ponownie dla caĹ‚ego turnieju`);
     res.redirect(`/admin/tournaments/${category.tournament}/manage`);
   } catch (error) {
     console.error('Error generating brackets:', error);
-    req.flash('error', 'Błąd podczas generowania drabinki');
+    req.flash('error', 'BĹ‚Ä…d podczas generowania drabinki');
     res.redirect('back');
   }
 };
-
-// Generate single elimination bracket
-function generateSingleEliminationBracket(participants, tournamentId, categoryId, startingMatchNumber = 1) {
-  const matches = [];
-  const numParticipants = participants.length;
-  const numRounds = Math.ceil(Math.log2(numParticipants));
-  const totalSlots = Math.pow(2, numRounds);
-  const numByes = totalSlots - numParticipants;
-  
-  // Shuffle participants for random seeding
-  const shuffledParticipants = [...participants].sort(() => Math.random() - 0.5);
-  
-  // Global match counter
-  let globalMatchNumber = startingMatchNumber;
-  
-  // Create first round matches
-  for (let i = 0; i < totalSlots / 2; i++) {
-    const participant1 = i < numParticipants ? shuffledParticipants[i] : null;
-    const participant2 = (i + totalSlots / 2) < numParticipants ? shuffledParticipants[i + totalSlots / 2] : null;
-    
-    const match = {
-      tournament: tournamentId,
-      category: categoryId,
-      round: 1,
-      matchNumber: globalMatchNumber++,
-      participant1: participant1 ? participant1._id : null,
-      participant2: participant2 ? participant2._id : null,
-      status: 'scheduled'
-    };
-    
-    matches.push(match);
-  }
-  
-  // Create remaining rounds (2 to numRounds) with continuous match numbering
-  let prevRoundMatches = totalSlots / 2;
-  for (let round = 2; round <= numRounds; round++) {
-    const currentRoundMatches = prevRoundMatches / 2;
-    
-    for (let i = 0; i < currentRoundMatches; i++) {
-      const match = {
-        tournament: tournamentId,
-        category: categoryId,
-        round: round,
-        matchNumber: globalMatchNumber++,
-        status: 'scheduled'
-      };
-      
-      matches.push(match);
-    }
-    
-    prevRoundMatches = currentRoundMatches;
-  }
-
-  return {
-    matches,
-    nextMatchNumber: globalMatchNumber
-  };
-}
-
-// Generate round robin matches
-function generateRoundRobinMatches(participants, tournamentId, categoryId, startingMatchNumber = 1) {
-  const matches = [];
-  const numParticipants = participants.length;
-  let matchNumber = startingMatchNumber;
-
-  // Round robin: each participant plays every other participant once
-  for (let i = 0; i < numParticipants; i++) {
-    for (let j = i + 1; j < numParticipants; j++) {
-      matches.push({
-        tournament: tournamentId,
-        category: categoryId,
-        round: 1,
-        matchNumber: matchNumber++,
-        participant1: participants[i]._id,
-        participant2: participants[j]._id,
-        status: 'scheduled'
-      });
-    }
-  }
-
-  return {
-    matches,
-    nextMatchNumber: matchNumber
-  };
-}
 
 // Start tournament - begin the first matches
 exports.startTournament = async (req, res) => {
@@ -358,7 +355,7 @@ exports.startTournament = async (req, res) => {
     // Check if tournament exists
     const tournament = await Tournament.findById(tournamentId);
     if (!tournament) {
-      req.flash('error', 'Turniej nie został znaleziony');
+      req.flash('error', 'Turniej nie zostaĹ‚ znaleziony');
       return res.redirect('back');
     }
 
@@ -400,15 +397,15 @@ exports.startTournament = async (req, res) => {
     }
 
     if (totalScheduled === 0) {
-      req.flash('warning', 'Turniej został rozpoczęty, ale nie znaleziono meczów do zaplanowania. Upewnij się, że drabinki zostały wygenerowane.');
+      req.flash('warning', 'Turniej zostaĹ‚ rozpoczÄ™ty, ale nie znaleziono meczĂłw do zaplanowania. Upewnij siÄ™, ĹĽe drabinki zostaĹ‚y wygenerowane.');
     } else {
-      req.flash('success', `Turniej został rozpoczęty! Zaplanowano ${totalScheduled} meczów.`);
+      req.flash('success', `Turniej zostaĹ‚ rozpoczÄ™ty! Zaplanowano ${totalScheduled} meczĂłw.`);
     }
     
     res.redirect(`/admin/tournaments/${tournamentId}/live`);
   } catch (error) {
     console.error('Error starting tournament:', error);
-    req.flash('error', `Błąd podczas rozpoczynania turnieju: ${error.message}`);
+    req.flash('error', `BĹ‚Ä…d podczas rozpoczynania turnieju: ${error.message}`);
     res.redirect('back');
   }
 };
@@ -453,9 +450,9 @@ exports.getLiveTournament = async (req, res) => {
       
       // Helper to get Polish round name
       const getRoundName = (roundNum) => {
-        if (roundNum === totalRounds) return 'Finał';
-        if (roundNum === totalRounds - 1) return 'Półfinały';
-        if (roundNum === totalRounds - 2) return 'Ćwierćfinały';
+        if (roundNum === totalRounds) return 'FinaĹ‚';
+        if (roundNum === totalRounds - 1) return 'PĂłĹ‚finaĹ‚y';
+        if (roundNum === totalRounds - 2) return 'Ä†wierÄ‡finaĹ‚y';
         return 'Runda ' + roundNum;
       };
       
@@ -480,7 +477,7 @@ exports.getLiveTournament = async (req, res) => {
     });
   } catch (error) {
     console.error('Error getting live tournament:', error);
-    req.flash('error', 'Błąd podczas ładowania turnieju');
+    req.flash('error', 'BĹ‚Ä…d podczas Ĺ‚adowania turnieju');
     res.redirect('back');
   }
 };
@@ -491,11 +488,16 @@ exports.updateMatchResult = async (req, res) => {
     const { matchId } = req.params;
     const { score1, score2, winnerId } = req.body;
 
-    const match = await Match.findById(matchId).populate('participant1 participant2');
+    console.log(`[updateMatchResult] Updating match ${matchId} with winner ${winnerId}`);
+
+    const match = await Match.findById(matchId).populate('participant1 participant2 winner');
     
     if (!match) {
+      console.log(`[updateMatchResult] Match not found: ${matchId}`);
       return res.status(404).json({ error: 'Match not found' });
     }
+
+    console.log(`[updateMatchResult] Match found: round ${match.round}, category: ${match.category}`);
 
     match.score1 = parseInt(score1);
     match.score2 = parseInt(score2);
@@ -504,42 +506,113 @@ exports.updateMatchResult = async (req, res) => {
     match.actualEndTime = new Date();
 
     await match.save();
+    console.log(`[updateMatchResult] Match saved with status: ${match.status}`);
 
-    // If this is a single elimination tournament, advance the winner
-    if (match.round.includes('Round')) {
-      await advanceWinner(match);
-    }
+    // Always try to advance the winner (for single elimination brackets)
+    console.log(`[updateMatchResult] Calling advanceWinner...`);
+    await advanceWinner(match);
 
     res.json({ success: true, match });
   } catch (error) {
-    console.error('Error updating match result:', error);
+    console.error('[updateMatchResult] Error:', error);
     res.status(500).json({ error: 'Error updating match result' });
   }
 };
 
 // Advance winner to next round
 async function advanceWinner(match) {
-  const currentRound = parseInt(match.round.split(' ')[1]);
-  const nextRound = currentRound + 1;
-  
-  // Find the next match for this winner
-  const nextMatch = await Match.findOne({
-    tournament: match.tournament,
-    category: match.category,
-    round: `Round ${nextRound}`,
-    $or: [
-      { participant1: null },
-      { participant2: null }
-    ]
-  });
-
-  if (nextMatch) {
-    if (!nextMatch.participant1) {
-      nextMatch.participant1 = match.winner;
-    } else if (!nextMatch.participant2) {
-      nextMatch.participant2 = match.winner;
+  try {
+    console.log(`[advanceWinner] Starting for match ${match._id}, round: ${match.round}, winner: ${match.winner}`);
+    
+    if (!match.winner) {
+      console.log('[advanceWinner] No winner set, returning');
+      return;
     }
-    await nextMatch.save();
+
+    // Find which category this match belongs to
+    const category = await Category.findOne({ matches: match._id });
+    if (!category) {
+      console.log('[advanceWinner] Could not find category for this match');
+      return;
+    }
+    console.log(`[advanceWinner] Found category: ${category._id}`);
+
+    // Parse current round - handle both numeric and string formats
+    let currentRound = parseInt(match.round);
+    if (isNaN(currentRound)) {
+      // If it's a string like "Round 1", extract the number
+      const roundMatch = match.round.match(/\d+/);
+      currentRound = roundMatch ? parseInt(roundMatch[0]) : 1;
+    }
+    
+    console.log(`[advanceWinner] Current round: ${currentRound}`);
+    
+    const nextRound = currentRound + 1;
+    
+    // Get all matches in current round to determine bracket position
+    // Query within the category's matches
+    const currentRoundMatches = await Match.find({
+      _id: { $in: category.matches },
+      round: { $in: [currentRound.toString(), currentRound] }
+    }).sort({ matchNumber: 1 });
+
+    console.log(`[advanceWinner] Found ${currentRoundMatches.length} matches in current round`);
+
+    if (!currentRoundMatches.length) {
+      console.log('[advanceWinner] No matches in current round, returning');
+      return;
+    }
+
+    // Find this match's position in the current round
+    const matchPosition = currentRoundMatches.findIndex(m => m._id.toString() === match._id.toString());
+    console.log(`[advanceWinner] Match position: ${matchPosition} out of ${currentRoundMatches.length}`);
+    
+    // Calculate winner's position in next round
+    // Winners from matches 0-1 go to position 0, 2-3 to position 1, etc.
+    const nextRoundMatchPosition = Math.floor(matchPosition / 2);
+
+    // Get all matches in next round sorted by match number
+    const nextRoundMatches = await Match.find({
+      _id: { $in: category.matches },
+      round: { $in: [nextRound.toString(), nextRound] }
+    }).sort({ matchNumber: 1 });
+
+    console.log(`[advanceWinner] Found ${nextRoundMatches.length} matches in next round`);
+
+    if (nextRoundMatches.length <= nextRoundMatchPosition) {
+      console.log(`[advanceWinner] Target match position ${nextRoundMatchPosition} doesn't exist in next round`);
+      return; // No next match exists
+    }
+
+    const targetMatch = nextRoundMatches[nextRoundMatchPosition];
+    console.log(`[advanceWinner] Target match: ${targetMatch._id}, position: ${nextRoundMatchPosition}`);
+    
+    // Determine which participant slot to fill based on current match position parity
+    // Even positions (0, 2, 4...) → participant1, Odd positions (1, 3, 5...) → participant2
+    const isEvenPosition = matchPosition % 2 === 0;
+    const slotName = isEvenPosition ? 'participant1' : 'participant2';
+
+    console.log(`[advanceWinner] Will place winner in ${slotName} (position ${matchPosition} is ${isEvenPosition ? 'even' : 'odd'})`);
+
+    if (isEvenPosition) {
+      if (!targetMatch.participant1) {
+        targetMatch.participant1 = match.winner;
+        await targetMatch.save();
+        console.log(`[advanceWinner] ✓ Winner advanced to next round match as participant1`);
+      } else {
+        console.log(`[advanceWinner] Participant1 already filled, skipping`);
+      }
+    } else {
+      if (!targetMatch.participant2) {
+        targetMatch.participant2 = match.winner;
+        await targetMatch.save();
+        console.log(`[advanceWinner] ✓ Winner advanced to next round match as participant2`);
+      } else {
+        console.log(`[advanceWinner] Participant2 already filled, skipping`);
+      }
+    }
+  } catch (error) {
+    console.error('[advanceWinner] Error:', error);
   }
 }
 
@@ -582,9 +655,9 @@ exports.getBrackets = async (req, res) => {
       
       // Helper to get Polish round name
       const getRoundName = (roundNum) => {
-        if (roundNum === totalRounds) return 'Finał';
-        if (roundNum === totalRounds - 1) return 'Półfinały';
-        if (roundNum === totalRounds - 2) return 'Ćwierćfinały';
+        if (roundNum === totalRounds) return 'FinaĹ‚';
+        if (roundNum === totalRounds - 1) return 'PĂłĹ‚finaĹ‚y';
+        if (roundNum === totalRounds - 2) return 'Ä†wierÄ‡finaĹ‚y';
         return 'Runda ' + roundNum;
       };
       
@@ -641,7 +714,7 @@ exports.getBrackets = async (req, res) => {
     });
   } catch (error) {
     console.error('Error getting brackets:', error);
-    req.flash('error', 'Błąd podczas ładowania drabinek');
+    req.flash('error', 'BĹ‚Ä…d podczas Ĺ‚adowania drabinek');
     res.redirect('back');
   }
 };
@@ -679,6 +752,23 @@ exports.startMatch = async (req, res) => {
     const match = await Match.findById(matchId);
     if (!match) {
       return res.status(404).json({ error: 'Match not found' });
+    }
+
+    // Check if all previous matches in the same round are completed
+    const previousMatches = await Match.find({
+      category: match.category,
+      round: match.round,
+      matchNumber: { $lt: match.matchNumber }
+    });
+
+    const allPreviousCompleted = previousMatches.every(m => m.status === 'completed');
+    if (!allPreviousCompleted) {
+      return res.status(400).json({ 
+        error: `Musisz najpierw ukończyć mecze: ${previousMatches
+          .filter(m => m.status !== 'completed')
+          .map(m => '#' + m.matchNumber)
+          .join(', ')}` 
+      });
     }
     
     match.status = 'in_progress';
@@ -789,3 +879,7 @@ exports.showCreateCategoryForm = async (req, res) => {
 
 // Export helper function for use in other controllers
 exports.assignParticipantToCategory = assignParticipantToCategory;
+
+
+
+

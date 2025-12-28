@@ -1,362 +1,815 @@
 <%- include('../partials/header') %>
 
-<div class="container-fluid mt-4">
-  <div class="d-flex justify-content-between align-items-center mb-4">
-    <h2><i class="fas fa-trophy"></i> Turniej na żywo: <%= tournament.name %></h2>
-    <div>
-      <a href="/admin/tournaments/<%= tournament._id %>/brackets" class="btn btn-info">
-        <i class="fas fa-sitemap"></i> Zobacz drabinki
-      </a>
-      <a href="/admin/tournaments/<%= tournament._id %>/manage" class="btn btn-secondary">
-        <i class="fas fa-cog"></i> Zarządzanie
-      </a>
-    </div>
-  </div>
-
-  <!-- Current Matches Section -->
-  <div class="row">
-    <div class="col-12">
-      <div class="card">
-        <div class="card-header bg-primary text-white">
-          <i class="fas fa-play"></i> Aktualne mecze
-        </div>
-        <div class="card-body">
-          <div id="current-matches">
-            <!-- Current matches will be loaded here -->
-          </div>
+<div class="tournament-live-container">
+  <!-- Header Section -->
+  <div class="live-view-header">
+    <div class="container-fluid">
+      <div class="d-flex justify-content-between align-items-center">
+        <h2><i class="fas fa-trophy"></i> Turniej na żywo: <%= tournament.name %></h2>
+        <div class="live-view-actions">
+          <a href="/admin/tournaments/<%= tournament._id %>/brackets" class="btn btn-info">
+            <i class="fas fa-sitemap"></i> Drabinki
+          </a>
+          <a href="/admin/tournaments/<%= tournament._id %>/manage" class="btn btn-secondary">
+            <i class="fas fa-cog"></i> Zarządzanie
+          </a>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Brackets View -->
-  <div class="row mt-4">
-    <div class="col-12">
-      <div class="card">
-        <div class="card-header bg-success text-white">
-          <i class="fas fa-sitemap"></i> Drabinki turniejowe
+  <div class="container-fluid mt-4">
+    <!-- Sequential Fights View - All Fights in Order -->
+    <% if (!categories || categories.length === 0) { %>
+      <div class="alert alert-info">
+        <i class="fas fa-info-circle"></i> Brak kategorii w turnieju
+      </div>
+    <% } else { %>
+      <!-- Collect all matches from all categories and sort by match number -->
+      <%
+        let allMatches = [];
+        categories.forEach(category => {
+          if (category.matches && category.matches.length > 0) {
+            category.matches.forEach(match => {
+              allMatches.push({
+                ...match,
+                categoryName: category.name,
+                categoryId: category._id
+              });
+            });
+          }
+        });
+        allMatches.sort((a, b) => a.matchNumber - b.matchNumber);
+      %>
+
+      <!-- Sequential Fights Section -->
+      <div class="sequential-fights-section mb-5">
+        <h3 class="section-header"><i class="fas fa-list-ol"></i> Mecze w Kolejności</h3>
+        
+        <div class="fights-timeline">
+          <% 
+            const inProgressMatches = allMatches.filter(m => m.status === 'in_progress');
+            const scheduledMatches = allMatches.filter(m => m.status === 'scheduled');
+            const completedMatches = allMatches.filter(m => m.status === 'completed');
+          %>
+
+          <!-- IN PROGRESS -->
+          <% inProgressMatches.forEach(match => { %>
+            <div class="fight-card fight-in-progress" data-match-id="<%= match._id %>">
+              <div class="fight-header">
+                <div class="fight-number-circle">
+                  <span class="fight-number"><%= match.matchNumber %></span>
+                </div>
+                <div class="fight-info-inline">
+                  <div class="fight-category"><strong><%= match.categoryName %></strong> • Runda <%= match.round %></div>
+                  <span class="fight-badge-inline bg-warning">🔴 TRWA</span>
+                </div>
+              </div>
+
+              <div class="fight-participants-inline">
+                <div class="fight-p">
+                  <input type="number" class="score-quick" id="score1_<%= match._id %>" value="<%= match.score1 || 0 %>" min="0">
+                  <span class="fight-name">
+                    <% if (match.participant1) { %>
+                      <% if (match.participant1.beltRank) { %>
+                        <span class="belt-dot" style="background-color: <%= match.participant1.beltRank.color %>;"></span>
+                      <% } %>
+                      <%= match.participant1.firstName %> <%= match.participant1.lastName %>
+                    <% } else { %>
+                      <span class="text-muted">TBD</span>
+                    <% } %>
+                  </span>
+                </div>
+                <div class="fight-p">
+                  <input type="number" class="score-quick" id="score2_<%= match._id %>" value="<%= match.score2 || 0 %>" min="0">
+                  <span class="fight-name">
+                    <% if (match.participant2) { %>
+                      <% if (match.participant2.beltRank) { %>
+                        <span class="belt-dot" style="background-color: <%= match.participant2.beltRank.color %>;"></span>
+                      <% } %>
+                      <%= match.participant2.firstName %> <%= match.participant2.lastName %>
+                    <% } else { %>
+                      <span class="text-muted">TBD</span>
+                    <% } %>
+                  </span>
+                </div>
+              </div>
+
+              <div class="fight-controls">
+                <select class="fight-winner-select" id="winner_<%= match._id %>">
+                  <option value="">Zwycięzca...</option>
+                  <% if (match.participant1) { %>
+                    <option value="<%= match.participant1._id %>" <%= match.winner && match.winner._id.toString() === match.participant1._id.toString() ? 'selected' : '' %>>
+                      <%= match.participant1.firstName %> <%= match.participant1.lastName %>
+                    </option>
+                  <% } %>
+                  <% if (match.participant2) { %>
+                    <option value="<%= match.participant2._id %>" <%= match.winner && match.winner._id.toString() === match.participant2._id.toString() ? 'selected' : '' %>>
+                      <%= match.participant2.firstName %> <%= match.participant2.lastName %>
+                    </option>
+                  <% } %>
+                </select>
+                <button class="btn-finish-quick" onclick="finishMatch('<%= match._id %>')">✓ KONIEC</button>
+              </div>
+            </div>
+          <% }) %>
+
+          <!-- SCHEDULED (Next Up) -->
+          <% if (scheduledMatches.length > 0) { %>
+            <div class="timeline-section-header">
+              <i class="fas fa-arrow-down"></i> Następnie
+            </div>
+            <% scheduledMatches.slice(0, 3).forEach(match => { %>
+              <div class="fight-card fight-scheduled" data-match-id="<%= match._id %>">
+                <div class="fight-header">
+                  <div class="fight-number-circle">
+                    <span class="fight-number"><%= match.matchNumber %></span>
+                  </div>
+                  <div class="fight-info-inline">
+                    <div class="fight-category"><strong><%= match.categoryName %></strong> • Runda <%= match.round %></div>
+                    <span class="fight-badge-inline bg-secondary">⏱️ CZEKA</span>
+                  </div>
+                </div>
+
+                <div class="fight-participants-inline">
+                  <div class="fight-p">
+                    <span class="fight-name">
+                      <% if (match.participant1) { %>
+                        <% if (match.participant1.beltRank) { %>
+                          <span class="belt-dot" style="background-color: <%= match.participant1.beltRank.color %>;"></span>
+                        <% } %>
+                        <%= match.participant1.firstName %> <%= match.participant1.lastName %>
+                      <% } else { %>
+                        <span class="text-muted">TBD</span>
+                      <% } %>
+                    </span>
+                  </div>
+                  <div class="fight-p">
+                    <span class="fight-name">
+                      <% if (match.participant2) { %>
+                        <% if (match.participant2.beltRank) { %>
+                          <span class="belt-dot" style="background-color: <%= match.participant2.beltRank.color %>;"></span>
+                        <% } %>
+                        <%= match.participant2.firstName %> <%= match.participant2.lastName %>
+                      <% } else { %>
+                        <span class="text-muted">TBD</span>
+                      <% } %>
+                    </span>
+                  </div>
+                </div>
+
+                <div class="fight-controls">
+                  <button class="btn-start-quick" onclick="startMatch('<%= match._id %>')">▶ START</button>
+                </div>
+              </div>
+            <% }) %>
+          <% } %>
+
+          <!-- COMPLETED -->
+          <% if (completedMatches.length > 0) { %>
+            <div class="timeline-section-header completed-header">
+              <i class="fas fa-check-circle"></i> Zakończone
+            </div>
+            <div class="completed-collapse">
+              <% completedMatches.forEach(match => { %>
+                <div class="fight-card fight-completed" data-match-id="<%= match._id %>">
+                  <div class="fight-header">
+                    <div class="fight-number-circle">
+                      <span class="fight-number"><%= match.matchNumber %></span>
+                    </div>
+                    <div class="fight-info-inline">
+                      <div class="fight-category"><strong><%= match.categoryName %></strong> • Runda <%= match.round %></div>
+                      <span class="fight-badge-inline bg-success">✓ KONIEC</span>
+                    </div>
+                  </div>
+
+                  <div class="fight-participants-inline">
+                    <div class="fight-p <%= match.winner && match.winner._id.toString() === (match.participant1 ? match.participant1._id.toString() : '') ? 'winner-p' : '' %>">
+                      <span class="fight-score"><%= match.score1 %></span>
+                      <span class="fight-name">
+                        <% if (match.winner && match.winner._id.toString() === (match.participant1 ? match.participant1._id.toString() : '')) { %>
+                          👑
+                        <% } %>
+                        <% if (match.participant1) { %>
+                          <% if (match.participant1.beltRank) { %>
+                            <span class="belt-dot" style="background-color: <%= match.participant1.beltRank.color %>;"></span>
+                          <% } %>
+                          <%= match.participant1.firstName %> <%= match.participant1.lastName %>
+                        <% } else { %>
+                          <span class="text-muted">TBD</span>
+                        <% } %>
+                      </span>
+                    </div>
+                    <div class="fight-p <%= match.winner && match.winner._id.toString() === (match.participant2 ? match.participant2._id.toString() : '') ? 'winner-p' : '' %>">
+                      <span class="fight-score"><%= match.score2 %></span>
+                      <span class="fight-name">
+                        <% if (match.winner && match.winner._id.toString() === (match.participant2 ? match.participant2._id.toString() : '')) { %>
+                          👑
+                        <% } %>
+                        <% if (match.participant2) { %>
+                          <% if (match.participant2.beltRank) { %>
+                            <span class="belt-dot" style="background-color: <%= match.participant2.beltRank.color %>;"></span>
+                          <% } %>
+                          <%= match.participant2.firstName %> <%= match.participant2.lastName %>
+                        <% } else { %>
+                          <span class="text-muted">TBD</span>
+                        <% } %>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              <% }) %>
+            </div>
+          <% } %>
         </div>
-        <div class="card-body">
-          <% if (!categories || categories.length === 0) { %>
-            <p class="text-muted">Brak kategorii w turnieju</p>
-          <% } else { %>
-            <% categories.forEach(category => { %>
-              <div class="category-bracket mb-4">
-                <h5><i class="fas fa-tag"></i> <%= category.name %></h5>
-                <small class="text-muted">Typ: <%= category.bracketType %> | Meczów: <%= category.matchCount %></small>
-                
-                <% if (category.hasMatches) { %>
-                  <div class="bracket-container mt-3">
-                    <div class="d-flex flex-nowrap" style="overflow-x: auto;">
-                      <% category.rounds.forEach(round => { %>
-                        <div class="round-column" style="flex: 0 0 auto; margin-right: 20px; min-width: 280px;">
-                          <div class="round-title-live">
-                            <strong><%= round.name %></strong>
-                            <small class="d-block text-muted">Runda <%= round.number %></small>
+      </div>
+
+      <!-- Bracket Visualization with Winner Paths -->
+      <% categories.forEach(category => { %>
+        <% if (category.matches && category.matches.length > 0) { %>
+          <!-- PROFESSIONAL BRACKET VIEW -->
+          <div class="bracket-section mb-5">
+            <h3 class="section-header"><i class="fas fa-sitemap"></i> Drabinka <%= category.name %></h3>
+            
+            <div class="bracket-container">
+              <div class="bracket-svg-wrapper">
+                <svg id="bracket-svg-<%= category._id %>" class="bracket-svg"></svg>
+              </div>
+              
+              <div class="bracket-matches-wrapper" id="bracket-<%= category._id %>">
+                <% category.rounds.forEach(round => { %>
+                  <div class="bracket-round" data-round="<%= round.number %>" data-category="<%= category._id %>">
+                    <div class="bracket-round-title"><strong><%= round.name %></strong></div>
+                    
+                    <div class="bracket-round-matches">
+                      <% round.matches.forEach((match, matchIdx) => { %>
+                        <div class="bracket-match" data-match-id="<%= match._id %>" data-match-idx="<%= matchIdx %>" data-round="<%= round.number %>">
+                          <!-- Participant 1 -->
+                          <div class="bracket-matchup">
+                            <div class="bracket-participant <%= match.winner && match.winner._id && match.winner._id.toString() === (match.participant1 ? match.participant1._id.toString() : '') ? 'winner' : '' %>">
+                              <div class="bracket-name">
+                                <% if (match.participant1) { %>
+                                  <span class="belt-rank" style="<% if (match.participant1.beltRank) { %>background-color: <%= match.participant1.beltRank.color %><% } %>"></span>
+                                  <span><%= match.participant1.firstName %> <%= match.participant1.lastName %></span>
+                                <% } else { %>
+                                  <span class="tbd">TBD</span>
+                                <% } %>
+                              </div>
+                              <div class="bracket-score"><%= match.score1 || '-' %></div>
+                            </div>
+                            
+                            <!-- Divider -->
+                            <div class="bracket-divider"></div>
+                            
+                            <!-- Participant 2 -->
+                            <div class="bracket-participant <%= match.winner && match.winner._id && match.winner._id.toString() === (match.participant2 ? match.participant2._id.toString() : '') ? 'winner' : '' %>">
+                              <div class="bracket-name">
+                                <% if (match.participant2) { %>
+                                  <span class="belt-rank" style="<% if (match.participant2.beltRank) { %>background-color: <%= match.participant2.beltRank.color %><% } %>"></span>
+                                  <span><%= match.participant2.firstName %> <%= match.participant2.lastName %></span>
+                                <% } else { %>
+                                  <span class="tbd">TBD</span>
+                                <% } %>
+                              </div>
+                              <div class="bracket-score"><%= match.score2 || '-' %></div>
+                            </div>
                           </div>
                           
-                          <% round.matches.forEach(match => { %>
-                            <div class="match-live <%= match.status %>">
-                              <div class="match-number-live">
-                                <small><strong>#<%= match.matchNumber %></strong></small>
-                              </div>
-                              
-                              <div class="participant-live <%= match.winner && match.participant1 && match.winner._id.toString() === match.participant1._id.toString() ? 'winner' : '' %>">
-                                <% if (match.participant1) { %>
-                                  <span><%= match.participant1.firstName %> <%= match.participant1.lastName %></span>
-                                  <% if (match.participant1.beltRank) { %>
-                                    <span class="belt-indicator-live" style="background-color: <%= match.participant1.beltRank.color %>;"></span>
-                                  <% } %>
-                                <% } else { %>
-                                  <span class="text-muted">TBD</span>
-                                <% } %>
-                                <span class="score-live"><%= match.score1 || 0 %></span>
-                              </div>
-                              
-                              <div class="participant-live <%= match.winner && match.participant2 && match.winner._id.toString() === match.participant2._id.toString() ? 'winner' : '' %>">
-                                <% if (match.participant2) { %>
-                                  <span><%= match.participant2.firstName %> <%= match.participant2.lastName %></span>
-                                  <% if (match.participant2.beltRank) { %>
-                                    <span class="belt-indicator-live" style="background-color: <%= match.participant2.beltRank.color %>;"></span>
-                                  <% } %>
-                                <% } else { %>
-                                  <span class="text-muted">TBD</span>
-                                <% } %>
-                                <span class="score-live"><%= match.score2 || 0 %></span>
-                              </div>
-                            </div>
-                          <% }) %>
+                          <!-- Match status indicator -->
+                          <div class="bracket-status <%= match.status %>">
+                            <% if (match.status === 'completed') { %>
+                              <i class="fas fa-check"></i> Zakończony
+                            <% } else if (match.status === 'in_progress') { %>
+                              <i class="fas fa-play"></i> Trwa
+                            <% } else { %>
+                              <i class="fas fa-clock"></i> Zaplanowany
+                            <% } %>
+                          </div>
                         </div>
                       <% }) %>
                     </div>
                   </div>
-                <% } else { %>
-                  <p class="text-muted mt-2">Brak meczów w tej kategorii. Wygeneruj drabinki.</p>
-                <% } %>
-              </div>
-              <hr>
-            <% }) %>
-          <% } %>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Matches Details Section (collapsed by default) -->
-  <div class="row mt-4">
-    <div class="col-12">
-      <button class="btn btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#matchesDetail">
-        <i class="fas fa-chevron-down"></i> Szczegóły meczów
-      </button>
-    </div>
-  </div>
-
-  <div class="collapse mt-3" id="matchesDetail">
-    <div class="row">
-      <% categories.forEach(category => { %>
-        <div class="col-md-6 mb-4">
-          <div class="card">
-          <div class="card-header">
-            <h5><i class="fas fa-tag"></i> <%= category.name %></h5>
-            <small class="text-muted">Typ: <%= category.bracketType %></small>
-          </div>
-          <div class="card-body">
-            <div class="matches-container" data-category="<%= category._id %>">
-              <% if (category.matches && category.matches.length > 0) { %>
-                <% category.matches.forEach(match => { %>
-                  <div class="match-card mb-3 p-3 border rounded" data-match="<%= match._id %>">
-                    <div class="row align-items-center">
-                      <div class="col-md-4">
-                        <div class="participant-info">
-                          <strong><%= match.participant1 ? match.participant1.firstName + ' ' + match.participant1.lastName : 'TBD' %></strong>
-                          <% if (match.participant1 && match.participant1.club) { %>
-                            <br><small class="text-muted"><%= match.participant1.club.clubName %></small>
-                          <% } %>
-                        </div>
-                      </div>
-                      <div class="col-md-4 text-center">
-                        <div class="match-info">
-                          <span class="badge badge-<%= match.status === 'completed' ? 'success' : match.status === 'in_progress' ? 'warning' : 'secondary' %>">
-                            <%= match.status === 'completed' ? 'Zakończony' : match.status === 'in_progress' ? 'W trakcie' : 'Zaplanowany' %>
-                          </span>
-                          <% if (match.scheduledTime) { %>
-                            <br><small><%= new Date(match.scheduledTime).toLocaleTimeString() %></small>
-                          <% } %>
-                          <% if (match.court) { %>
-                            <br><small>Boisko: <%= match.court %></small>
-                          <% } %>
-                        </div>
-                      </div>
-                      <div class="col-md-4">
-                        <div class="participant-info text-right">
-                          <strong><%= match.participant2 ? match.participant2.firstName + ' ' + match.participant2.lastName : 'TBD' %></strong>
-                          <% if (match.participant2 && match.participant2.club) { %>
-                            <br><small class="text-muted"><%= match.participant2.club.clubName %></small>
-                          <% } %>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <% if (match.status === 'scheduled') { %>
-                      <div class="row mt-2">
-                        <div class="col-12 text-center">
-                          <button class="btn btn-primary btn-sm" onclick="startMatch('<%= match._id %>')">
-                            <i class="fas fa-play"></i> Rozpocznij mecz
-                          </button>
-                        </div>
-                      </div>
-                    <% } else if (match.status === 'in_progress') { %>
-                      <div class="row mt-2">
-                        <div class="col-12">
-                          <div class="score-input">
-                            <div class="row">
-                              <div class="col-4">
-                                <label>Wynik 1:</label>
-                                <input type="number" class="form-control form-control-sm" id="score1_<%= match._id %>" value="<%= match.score1 || 0 %>">
-                              </div>
-                              <div class="col-4">
-                                <label>Wynik 2:</label>
-                                <input type="number" class="form-control form-control-sm" id="score2_<%= match._id %>" value="<%= match.score2 || 0 %>">
-                              </div>
-                              <div class="col-4">
-                                <label>Zwycięzca:</label>
-                                <select class="form-control form-control-sm" id="winner_<%= match._id %>">
-                                  <option value="">Wybierz zwycięzcę</option>
-                                  <% if (match.participant1) { %>
-                                    <option value="<%= match.participant1._id %>"><%= match.participant1.firstName %> <%= match.participant1.lastName %></option>
-                                  <% } %>
-                                  <% if (match.participant2) { %>
-                                    <option value="<%= match.participant2._id %>"><%= match.participant2.firstName %> <%= match.participant2.lastName %></option>
-                                  <% } %>
-                                </select>
-                              </div>
-                            </div>
-                            <div class="row mt-2">
-                              <div class="col-12 text-center">
-                                <button class="btn btn-success btn-sm" onclick="finishMatch('<%= match._id %>')">
-                                  <i class="fas fa-check"></i> Zakończ mecz
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    <% } else if (match.status === 'completed') { %>
-                      <div class="row mt-2">
-                        <div class="col-12 text-center">
-                          <div class="result-info">
-                            <strong>Wynik: <%= match.score1 %> - <%= match.score2 %></strong>
-                            <% if (match.winner) { %>
-                              <br><span class="text-success">Zwycięzca: <%= match.winner.firstName %> <%= match.winner.lastName %></span>
-                            <% } %>
-                          </div>
-                        </div>
-                      </div>
-                    <% } %>
-                  </div>
                 <% }) %>
-              <% } else { %>
-                <p class="text-muted">Brak meczów w tej kategorii</p>
-              <% } %>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
-    <% }) %>
-    </div>
+        <% } %>
+      <% }) %>
+    <% } %>
   </div>
 </div>
 
 <style>
-/* Brackets styling */
-.bracket-container {
-  overflow-x: auto;
-  padding: 15px 0;
-  background-color: #f8f9fa;
-  border-radius: 5px;
-  margin-top: 15px;
+.tournament-live-container {
+  background: #f5f7fa;
+  min-height: 100vh;
+  padding-bottom: 30px;
 }
 
-.round-column {
+.live-view-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 25px 0;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  margin-bottom: 30px;
+}
+
+.live-view-header h2 {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.live-view-actions {
   display: flex;
-  flex-direction: column;
+  gap: 10px;
 }
 
-.round-title-live {
-  text-align: center;
-  font-weight: bold;
-  margin-bottom: 15px;
-  padding: 10px;
-  background-color: #e7f3ff;
-  border: 2px solid #0066cc;
-  border-radius: 5px;
-  color: #0066cc;
+.live-view-actions .btn {
+  background: rgba(255, 255, 255, 0.15) !important;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: 600;
+  transition: all 0.3s;
 }
 
-.round-title-live small {
-  font-size: 0.75em;
-  font-weight: normal;
-  display: block;
-  margin-top: 5px;
+.live-view-actions .btn:hover {
+  background: rgba(255, 255, 255, 0.25) !important;
+  border-color: white;
+  transform: translateY(-2px);
 }
 
-.match-live {
-  margin-bottom: 15px;
-  padding: 8px;
-  border: 2px solid #dee2e6;
-  border-radius: 5px;
-  background-color: white;
-  min-height: 70px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+.section-header {
+  padding: 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 12px 12px 0 0;
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
-.match-live.completed {
-  background-color: #d4edda;
-  border-color: #28a745;
+/* SEQUENTIAL FIGHTS SECTION */
+.sequential-fights-section {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
 }
 
-.match-live.in_progress {
-  background-color: #fff3cd;
-  border-color: #ffc107;
+.fights-timeline {
+  padding: 20px;
 }
 
-.match-number-live {
-  font-size: 0.85em;
-  color: #666;
-  margin-bottom: 5px;
-  padding-bottom: 5px;
-  border-bottom: 1px solid #e9ecef;
+.fight-card {
+  background: white;
+  border-left: 5px solid #cbd5e0;
+  padding: 16px;
+  margin-bottom: 12px;
+  border-radius: 8px;
+  transition: all 0.3s;
 }
 
-.participant-live {
+.fight-card.fight-in-progress {
+  border-left-color: #f6ad55;
+  background: #fffbf0;
+  box-shadow: 0 2px 8px rgba(246, 173, 85, 0.2);
+}
+
+.fight-card.fight-scheduled {
+  border-left-color: #718096;
+}
+
+.fight-card.fight-scheduled:hover {
+  box-shadow: 0 4px 12px rgba(113, 128, 150, 0.2);
+  transform: translateX(4px);
+}
+
+.fight-card.fight-completed {
+  border-left-color: #48bb78;
+  background: #f0fff4;
+}
+
+.fight-header {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 12px;
+}
+
+.fight-number-circle {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.fight-number {
+  font-weight: 700;
+  font-size: 20px;
+}
+
+.fight-info-inline {
+  flex: 1;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 4px 0;
-  font-size: 0.9em;
-  min-height: 25px;
 }
 
-.participant-live.winner {
-  font-weight: bold;
-  color: #28a745;
-  background-color: rgba(40, 167, 69, 0.1);
-  padding: 4px;
-  border-radius: 3px;
+.fight-category {
+  font-size: 14px;
+  font-weight: 600;
+  color: #2d3748;
 }
 
-.score-live {
-  font-weight: bold;
-  background-color: #f0f0f0;
-  padding: 2px 6px;
-  border-radius: 3px;
+.fight-badge-inline {
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  color: white;
+}
+
+.fight-participants-inline {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.fight-p {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #f7fafc;
+  padding: 10px 12px;
+  border-radius: 6px;
+  border: 2px solid #e2e8f0;
+}
+
+.fight-p.winner-p {
+  background: #d1fae5;
+  border-color: #10b981;
+  font-weight: 600;
+}
+
+.fight-name {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.fight-score {
+  font-weight: 700;
+  font-size: 18px;
   min-width: 25px;
   text-align: center;
+  background: white;
+  padding: 4px 8px;
+  border-radius: 4px;
 }
 
-.belt-indicator-live {
+.belt-dot {
   display: inline-block;
   width: 12px;
   height: 12px;
-  border-radius: 2px;
-  margin-left: 5px;
-  vertical-align: middle;
+  border-radius: 50%;
+  border: 2px solid rgba(0, 0, 0, 0.1);
+  flex-shrink: 0;
 }
 
-.category-bracket {
-  padding: 15px;
-  background-color: #ffffff;
-  border: 1px solid #dee2e6;
-  border-radius: 5px;
+.score-quick {
+  width: 60px;
+  padding: 6px 8px;
+  border: 2px solid #cbd5e0;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: center;
 }
 
-/* Match details styling */
-.match-card {
-  transition: all 0.3s ease;
+.fight-controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
 }
 
-.match-card:hover {
-  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+.fight-winner-select {
+  flex: 1;
+  padding: 8px 10px;
+  border: 2px solid #cbd5e0;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  background: white;
 }
 
-.participant-info {
-  min-height: 50px;
+.btn-finish-quick, .btn-start-quick {
+  padding: 8px 16px;
+  font-weight: 700;
+  font-size: 13px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-finish-quick {
+  background: #10b981;
+  color: white;
+}
+
+.btn-finish-quick:hover {
+  background: #059669;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.btn-start-quick {
+  background: #667eea;
+  color: white;
+  width: 100%;
+}
+
+.btn-start-quick:hover {
+  background: #5568d3;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.timeline-section-header {
+  padding: 12px 16px;
+  background: #edf2f7;
+  font-weight: 700;
+  color: #4a5568;
+  border-radius: 6px;
+  margin: 20px 0 12px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.timeline-section-header.completed-header {
+  cursor: pointer;
+  user-select: none;
+}
+
+.completed-collapse {
+  max-height: 400px;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+}
+
+/* PROFESSIONAL BRACKET VISUALIZATION */
+.bracket-section {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.bracket-container {
+  position: relative;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%);
+  padding: 40px 30px;
+  overflow: hidden;
+  min-height: 600px;
+}
+
+.bracket-svg-wrapper {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.bracket-svg {
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.1));
+}
+
+.bracket-matches-wrapper {
+  display: flex;
+  gap: 60px;
+  justify-content: flex-start;
+  align-items: flex-start;
+  overflow-x: auto;
+  padding: 20px;
+  position: relative;
+  z-index: 2;
+  min-width: min-content;
+}
+
+.bracket-round {
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
+  gap: 20px;
+}
+
+.bracket-round-title {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 12px 16px;
+  border-radius: 8px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.bracket-round-matches {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.bracket-match {
+  background: white;
+  border: 2px solid #e0e7ff;
+  border-radius: 10px;
+  padding: 12px;
+  min-width: 240px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.bracket-match:hover {
+  border-color: #667eea;
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.15);
+  transform: translateY(-2px);
+}
+
+.bracket-matchup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.bracket-participant {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  background: #f8f9fa;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  transition: all 0.2s;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.bracket-participant.winner {
+  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+  border-color: #10b981;
+  font-weight: 700;
+  color: #047857;
+}
+
+.bracket-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.bracket-name span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.belt-rank {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  border: 2px solid rgba(0, 0, 0, 0.1);
+}
+
+.tbd {
+  color: #9ca3af;
+  font-style: italic;
+}
+
+.bracket-score {
+  background: white;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-weight: 700;
+  font-size: 14px;
+  min-width: 35px;
+  text-align: center;
+  flex-shrink: 0;
+  border: 1px solid #e5e7eb;
+}
+
+.bracket-participant.winner .bracket-score {
+  background: #10b981;
+  color: white;
+  border-color: #059669;
+}
+
+.bracket-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #e0e7ff, transparent);
+}
+
+.bracket-status {
+  display: flex;
+  align-items: center;
   justify-content: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
-.score-input {
-  background-color: #f8f9fa;
-  padding: 15px;
-  border-radius: 5px;
+.bracket-status.completed {
+  background: #d1fae5;
+  color: #047857;
 }
 
-.result-info {
-  background-color: #d4edda;
-  padding: 10px;
-  border-radius: 5px;
-  border: 1px solid #c3e6cb;
+.bracket-status.in_progress {
+  background: #fed7aa;
+  color: #92400e;
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.bracket-status.scheduled {
+  background: #dbeafe;
+  color: #0c4a6e;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+@media (max-width: 768px) {
+  .fight-header {
+    flex-wrap: wrap;
+  }
+
+  .fight-info-inline {
+    width: 100%;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .fight-participants-inline {
+    flex-direction: column;
+  }
+
+  .fight-controls {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .fight-winner-select {
+    width: 100%;
+  }
+
+  .btn-start-quick {
+    width: 100%;
+  }
+
+  .rounds-container {
+    gap: 20px;
+  }
+
+  .match-box-live {
+    min-width: 160px;
+  }
 }
 </style>
 
@@ -373,7 +826,9 @@ function startMatch(matchId) {
     if (response.ok) {
       location.reload();
     } else {
-      alert('Błąd podczas rozpoczynania meczu');
+      return response.json().then(data => {
+        alert(data.error || 'Błąd podczas rozpoczynania meczu');
+      });
     }
   })
   .catch(error => {
@@ -382,16 +837,22 @@ function startMatch(matchId) {
   });
 }
 
-// Finish a match
+// Finish a match and advance winner
 function finishMatch(matchId) {
-  const score1 = document.getElementById(`score1_${matchId}`).value;
-  const score2 = document.getElementById(`score2_${matchId}`).value;
-  const winner = document.getElementById(`winner_${matchId}`).value;
+  const score1Input = document.getElementById(`score1_${matchId}`);
+  const score2Input = document.getElementById(`score2_${matchId}`);
+  const winnerSelect = document.getElementById(`winner_${matchId}`);
+  
+  const score1 = score1Input ? score1Input.value : '0';
+  const score2 = score2Input ? score2Input.value : '0';
+  const winner = winnerSelect ? winnerSelect.value : '';
 
   if (!winner) {
     alert('Proszę wybrać zwycięzcę meczu');
     return;
   }
+
+  console.log(`[finishMatch] Submitting match ${matchId} with winner ${winner}`);
 
   fetch(`/admin/tournaments/matches/${matchId}/result`, {
     method: 'PUT',
@@ -406,21 +867,168 @@ function finishMatch(matchId) {
   })
   .then(response => {
     if (response.ok) {
-      location.reload();
+      console.log(`[finishMatch] Match updated successfully, reloading page...`);
+      // Wait a bit for backend to process, then reload
+      setTimeout(() => {
+        location.reload();
+      }, 800);
     } else {
-      alert('Błąd podczas zakończenia meczu');
+      return response.json().then(data => {
+        console.error(`[finishMatch] Error:`, data);
+        alert(data.error || 'Błąd podczas zakończenia meczu');
+      });
     }
   })
   .catch(error => {
-    console.error('Error:', error);
+    console.error('[finishMatch] Network error:', error);
     alert('Błąd podczas zakończenia meczu');
   });
 }
 
-// Auto-refresh every 30 seconds
-setInterval(() => {
-  location.reload();
-}, 30000);
+// Draw bracket connection lines (SVG)
+function drawBracketLines() {
+  console.log('[drawBracketLines] Starting...');
+  
+  const brackets = document.querySelectorAll('[id^="bracket-svg-"]');
+  
+  brackets.forEach(svg => {
+    const categoryId = svg.id.replace('bracket-svg-', '');
+    const bracketWrapper = document.getElementById(`bracket-${categoryId}`);
+    
+    if (!bracketWrapper) {
+      console.warn(`[drawBracketLines] Bracket wrapper not found for category ${categoryId}`);
+      return;
+    }
+    
+    // Clear previous lines
+    svg.innerHTML = '';
+    
+    // Get the scroll container's dimensions
+    const parentContainer = bracketWrapper.parentElement;
+    svg.setAttribute('viewBox', `0 0 ${parentContainer.scrollWidth} ${parentContainer.scrollHeight}`);
+    svg.setAttribute('width', parentContainer.scrollWidth);
+    svg.setAttribute('height', parentContainer.scrollHeight);
+    
+    const rounds = bracketWrapper.querySelectorAll('.bracket-round');
+    if (rounds.length < 2) return;
+    
+    // Group for lines
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    g.setAttribute('class', 'bracket-lines');
+    
+    let linesDrawn = 0;
+    
+    // For each pair of consecutive rounds
+    for (let i = 0; i < rounds.length - 1; i++) {
+      const currentRound = rounds[i];
+      const nextRound = rounds[i + 1];
+      
+      const currentMatches = currentRound.querySelectorAll('.bracket-match');
+      const nextMatches = nextRound.querySelectorAll('.bracket-match');
+      
+      currentMatches.forEach((currentMatch, matchIdx) => {
+        // Check if match has a winner
+        const winners = currentMatch.querySelectorAll('.bracket-participant.winner');
+        if (winners.length === 0) return;
+        
+        // Calculate which next match this winner goes to
+        const nextMatchIdx = Math.floor(matchIdx / 2);
+        if (nextMatchIdx >= nextMatches.length) return;
+        
+        const nextMatch = nextMatches[nextMatchIdx];
+        
+        // Get positions
+        const currentRect = currentMatch.getBoundingClientRect();
+        const nextRect = nextMatch.getBoundingClientRect();
+        const parentRect = parentContainer.getBoundingClientRect();
+        
+        // Convert to SVG coordinates
+        const x1 = currentRect.right - parentRect.left + parentContainer.scrollLeft;
+        const y1 = currentRect.top - parentRect.top + currentRect.height / 2 + parentContainer.scrollTop;
+        const x2 = nextRect.left - parentRect.left + parentContainer.scrollLeft - 20;
+        const y2 = nextRect.top - parentRect.top + nextRect.height / 2 + parentContainer.scrollTop;
+        
+        // Draw connecting curve with arrow
+        const midX = (x1 + x2) / 2;
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('d', `M ${x1} ${y1} C ${midX} ${y1}, ${midX} ${y2}, ${x2} ${y2}`);
+        path.setAttribute('stroke', '#10b981');
+        path.setAttribute('stroke-width', '3');
+        path.setAttribute('fill', 'none');
+        path.setAttribute('stroke-linecap', 'round');
+        path.setAttribute('stroke-linejoin', 'round');
+        path.setAttribute('opacity', '0.7');
+        
+        g.appendChild(path);
+        
+        // Draw arrow
+        const arrowSize = 8;
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        const angle = Math.atan2(dy, dx);
+        
+        const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+        const arrowPoints = [
+          [x2, y2],
+          [x2 - arrowSize * Math.cos(angle - Math.PI / 6), y2 - arrowSize * Math.sin(angle - Math.PI / 6)],
+          [x2 - arrowSize * Math.cos(angle + Math.PI / 6), y2 - arrowSize * Math.sin(angle + Math.PI / 6)]
+        ];
+        arrow.setAttribute('points', arrowPoints.map(p => p.join(',')).join(' '));
+        arrow.setAttribute('fill', '#10b981');
+        
+        g.appendChild(arrow);
+        
+        linesDrawn++;
+      });
+    }
+    
+    svg.appendChild(g);
+    console.log(`[drawBracketLines] Drew ${linesDrawn} lines for bracket ${categoryId}`);
+  });
+}
+
+// Redraw lines after page updates
+document.addEventListener('DOMContentLoaded', () => {
+  console.log('[Tournament Live] Page loaded');
+  
+  // Initial draw
+  setTimeout(() => drawBracketLines(), 200);
+  
+  // Auto-refresh bracket every 15 seconds
+  setInterval(() => {
+    fetch(window.location.href)
+      .then(r => r.text())
+      .then(html => {
+        // Parse new HTML and check if any match statuses changed
+        const parser = new DOMParser();
+        const newDoc = parser.parseFromString(html, 'text/html');
+        const oldMatches = document.querySelectorAll('.bracket-match');
+        const newMatches = newDoc.querySelectorAll('.bracket-match');
+        
+        if (oldMatches.length === newMatches.length) {
+          // Check if any statuses changed
+          let changed = false;
+          for (let i = 0; i < oldMatches.length; i++) {
+            const oldStatus = oldMatches[i].querySelector('.bracket-status').className;
+            const newStatus = newMatches[i].querySelector('.bracket-status').className;
+            if (oldStatus !== newStatus) {
+              changed = true;
+              break;
+            }
+          }
+          
+          if (changed) {
+            console.log('[Tournament Live] Bracket status changed, reloading...');
+            location.reload();
+          }
+        }
+      })
+      .catch(err => console.warn('[Tournament Live] Auto-refresh error:', err));
+  }, 15000);
+});
 </script>
 
+</div>
+
 <%- include('../partials/footer') %>
+

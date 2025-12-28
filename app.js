@@ -87,8 +87,8 @@ app.get('/api/belt-ranks', async (req, res) => {
 app.use('/', userRoutes);
 app.use('/', participants)
 app.use('/tournaments', tournaments)
-app.use('/admin/tournaments', tournamentManagement)
 app.use('/admin', adminRoutes)
+app.use('/admin/tournaments', tournamentManagement)
 app.use('/', categories)
 app.use('/', matches)
 

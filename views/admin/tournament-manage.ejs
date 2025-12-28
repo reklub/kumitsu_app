@@ -2,13 +2,13 @@
 
 <div class="container mt-4">
   <div class="d-flex justify-content-between align-items-center mb-4">
-    <h2>Zarządzanie turniejem: <%= tournament.name %></h2>
+    <h2 style="font-weight: 700; color: #2d3748;"><i class="fas fa-trophy" style="margin-right: 0.5rem; color: #667eea;"></i> <%= tournament.name %></h2>
   </div>
   
   <!-- Status i informacje podstawowe -->
   <div class="row mb-4">
     <div class="col-md-4">
-      <div class="card">
+      <div class="card tournament-info-card">
         <div class="card-header">
           <i class="fas fa-info-circle"></i> Informacje
         </div>
@@ -31,40 +31,40 @@
     </div>
     
     <div class="col-md-4">
-      <div class="card">
+      <div class="card tournament-info-card">
         <div class="card-header">
           <i class="fas fa-chart-bar"></i> Statystyki
         </div>
         <div class="card-body">
           <div id="tournament-stats">
-            <p><strong>Kategorie:</strong> <span id="categories-count">-</span></p>
-            <p><strong>Mecze:</strong> <span id="total-matches">-</span></p>
-            <p><strong>Zakończone:</strong> <span id="completed-matches">-</span></p>
-            <p><strong>W trakcie:</strong> <span id="in-progress-matches">-</span></p>
-            <p><strong>Zaplanowane:</strong> <span id="scheduled-matches">-</span></p>
+            <p><strong>Kategorie:</strong> <span id="categories-count" style="color: #667eea; font-weight: 700;">-</span></p>
+            <p><strong>Mecze:</strong> <span id="total-matches" style="color: #667eea; font-weight: 700;">-</span></p>
+            <p><strong>Zakończone:</strong> <span id="completed-matches" style="color: #10b981; font-weight: 700;">-</span></p>
+            <p><strong>W trakcie:</strong> <span id="in-progress-matches" style="color: #f59e0b; font-weight: 700;">-</span></p>
+            <p><strong>Zaplanowane:</strong> <span id="scheduled-matches" style="color: #6b7280; font-weight: 700;">-</span></p>
           </div>
         </div>
       </div>
     </div>
     
-    <div class="col-md-8">
-      <div class="card">
+    <div class="col-md-4">
+      <div class="card tournament-info-card">
         <div class="card-header">
-          <i class="fas fa-cogs"></i> Akcje zarządzania
+          <i class="fas fa-cogs"></i> Akcje
         </div>
         <div class="card-body">
-          <div class="btn-group-vertical w-100">
-            <button class="btn btn-info mb-2" onclick="prepareTournament()">
-              <i class="fas fa-cogs"></i> Przygotuj turniej
+          <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+            <button class="btn" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; font-weight: 600; border-radius: 6px; padding: 0.6rem;" onclick="prepareTournament()">
+              <i class="fas fa-cogs"></i> Przygotuj
             </button>
-            <button class="btn btn-danger mb-2" onclick="startTournament()">
-              <i class="fas fa-play"></i> Rozpocznij turniej
+            <button class="btn" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; border: none; font-weight: 600; border-radius: 6px; padding: 0.6rem;" onclick="startTournament()">
+              <i class="fas fa-play"></i> Rozpocznij
             </button>
-            <a href="/admin/tournaments/<%= tournament._id %>/live" class="btn btn-info mb-2">
-              <i class="fas fa-tv"></i> Widok na żywo
+            <a href="/admin/tournaments/<%= tournament._id %>/live" class="btn" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white; border: none; font-weight: 600; border-radius: 6px; padding: 0.6rem; text-decoration: none; display: flex; align-items: center; justify-content: center;">
+              <i class="fas fa-tv" style="margin-right: 0.3rem;"></i> Na żywo
             </a>
-            <a href="/admin/tournaments/<%= tournament._id %>/brackets" class="btn btn-success mb-2">
-              <i class="fas fa-trophy"></i> Zobacz wyniki
+            <a href="/admin/tournaments/<%= tournament._id %>/brackets" class="btn" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none; font-weight: 600; border-radius: 6px; padding: 0.6rem; text-decoration: none; display: flex; align-items: center; justify-content: center;">
+              <i class="fas fa-trophy" style="margin-right: 0.3rem;"></i> Wyniki
             </a>
           </div>
         </div>
@@ -75,58 +75,65 @@
   <!-- Brackets Management Section -->
   <div class="row mt-4 mb-4">
     <div class="col-12">
-      <div class="card border-primary">
-        <div class="card-header bg-primary text-white">
-          <i class="fas fa-sitemap"></i> <strong>Zarządzanie drabinkami</strong>
+      <div class="card brackets-section">
+        <div class="card-header">
+          <i class="fas fa-sitemap"></i> Zarządzanie drabinkami
         </div>
         <div class="card-body">
           <div class="alert alert-info">
             <i class="fas fa-info-circle"></i> 
-            Przed rozpoczęciem turnieju możesz generować i edytować drabinki dla każdej kategorii. 
-            Wybierz kategorię i kliknij przycisk "Wygeneruj drabinkę".
+            <strong>Przed rozpoczęciem turnieju</strong> możesz generować i edytować drabinki dla każdej kategorii.
           </div>
           
           <div class="row">
             <% if (categories && categories.length > 0) { %>
               <% categories.forEach((category, index) => { %>
-                <div class="col-lg-6 mb-3">
-                  <div class="card border-left-<%= ['primary', 'success', 'info', 'warning'][index % 4] %>">
-                    <div class="card-body">
-                      <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                          <h6 class="card-title"><i class="fas fa-tag"></i> <%= category.name %></h6>
-                          <small class="text-muted d-block">Typ: <strong><%= category.bracketType === 'single_elimination' ? 'Pojedyncza eliminacja' : category.bracketType === 'double_elimination' ? 'Podwójna eliminacja' : 'Każdy z każdym' %></strong></small>
-                          <small class="text-muted d-block">Uczestnicy: <strong><%= category.participants ? category.participants.length : 0 %></strong></small>
-                          
-                          <% if (category.matches && category.matches.length > 0) { %>
-                            <small class="text-success d-block mt-1">
-                              <i class="fas fa-check-circle"></i> Drabinka wygenerowana: <strong><%= category.matches.length %> meczy</strong>
-                            </small>
-                          <% } else { %>
-                            <small class="text-danger d-block mt-1">
-                              <i class="fas fa-times-circle"></i> <strong>Brak wygenerowanej drabinki</strong>
-                            </small>
-                          <% } %>
-                        </div>
-                        
-                        <div class="text-right">
-                          <% if (category.participants && category.participants.length >= 2) { %>
-                            <button class="btn btn-sm btn-success mb-2" onclick="generateCategoryBrackets('<%= category._id %>', '<%= category.name %>')">
-                              <i class="fas fa-magic"></i> Wygeneruj
-                            </button>
-                          <% } else { %>
-                            <button class="btn btn-sm btn-secondary mb-2" disabled>
-                              <i class="fas fa-lock"></i> Mało uczestników
-                            </button>
-                          <% } %>
-                          
-                          <% if (category.matches && category.matches.length > 0) { %>
-                            <a href="/admin/tournaments/<%= tournament._id %>/brackets" class="btn btn-sm btn-info">
-                              <i class="fas fa-eye"></i> Podgląd
-                            </a>
-                          <% } %>
-                        </div>
+                <div class="col-lg-6">
+                  <div class="category-bracket-card">
+                    <h6 class="category-name">
+                      <i class="fas fa-tag"></i> 
+                      <%= category.name %>
+                    </h6>
+                    
+                    <div class="category-meta">
+                      <div class="meta-item">
+                        <i class="fas fa-users"></i>
+                        <span><strong><%= category.participants ? category.participants.length : 0 %></strong> uczestników</span>
                       </div>
+                      <div class="meta-item">
+                        <i class="fas fa-layer-group"></i>
+                        <span>Typ: <strong><%= category.bracketType === 'single_elimination' ? 'Pojedyncza eliminacja' : category.bracketType === 'double_elimination' ? 'Podwójna eliminacja' : 'Każdy z każdym' %></strong></span>
+                      </div>
+                    </div>
+                    
+                    <% if (category.matches && category.matches.length > 0) { %>
+                      <div class="bracket-status-badge generated">
+                        <i class="fas fa-check-circle"></i> 
+                        Drabinka wygenerowana: <strong><%= category.matches.length %> meczy</strong>
+                      </div>
+                    <% } else { %>
+                      <div class="bracket-status-badge not-generated">
+                        <i class="fas fa-times-circle"></i> 
+                        <strong>Brak wygenerowanej drabinki</strong>
+                      </div>
+                    <% } %>
+                    
+                    <div class="bracket-actions">
+                      <% if (category.participants && category.participants.length >= 2) { %>
+                        <button class="btn-action btn-generate" onclick="generateCategoryBrackets('<%= category._id %>', '<%= category.name %>')">
+                          <i class="fas fa-magic"></i> Wygeneruj
+                        </button>
+                      <% } else { %>
+                        <button class="btn-action btn-disabled" disabled>
+                          <i class="fas fa-lock"></i> Mało uczestników
+                        </button>
+                      <% } %>
+                      
+                      <% if (category.matches && category.matches.length > 0) { %>
+                        <a href="/admin/tournaments/<%= tournament._id %>/brackets" class="btn-action btn-preview">
+                          <i class="fas fa-eye"></i> Podgląd
+                        </a>
+                      <% } %>
                     </div>
                   </div>
                 </div>
@@ -135,26 +142,20 @@
               <div class="col-12">
                 <div class="alert alert-warning">
                   <i class="fas fa-exclamation-triangle"></i> 
-                  Brak kategorii w turnieju. Najpierw utwórz kategorie powyżej.
+                  <strong>Brak kategorii w turnieju.</strong> Najpierw utwórz kategorie powyżej.
                 </div>
               </div>
             <% } %>
           </div>
           
-          <hr>
-          
-          <div class="row mt-3">
-            <div class="col-12">
-              <h6>Akcje zbiorcze:</h6>
-              <div class="btn-group" role="group">
-                <button class="btn btn-primary" onclick="generateAllBrackets()">
-                  <i class="fas fa-bolt"></i> Wygeneruj wszystkie drabinki
-                </button>
-                <a href="/admin/tournaments/<%= tournament._id %>/brackets" class="btn btn-info">
-                  <i class="fas fa-eye"></i> Podgląd wszystkich
-                </a>
-              </div>
-            </div>
+          <div class="bulk-actions">
+            <h6><i class="fas fa-bolt"></i> Akcje zbiorcze</h6>
+            <button class="btn btn-primary" onclick="generateAllBrackets()">
+              <i class="fas fa-magic"></i> Wygeneruj wszystkie drabinki
+            </button>
+            <a href="/admin/tournaments/<%= tournament._id %>/brackets" class="btn btn-info">
+              <i class="fas fa-eye"></i> Podgląd wszystkich
+            </a>
           </div>
         </div>
       </div>
@@ -432,6 +433,271 @@
 </div>
 
 <style>
+/* ===== TOURNAMENT INFO CARDS ===== */
+.tournament-info-card {
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  border: none;
+  border-radius: 8px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.tournament-info-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+}
+
+.tournament-info-card .card-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  color: white;
+  font-weight: 600;
+  padding: 1rem;
+  border-radius: 8px 8px 0 0;
+}
+
+.tournament-info-card .card-body {
+  padding: 1.5rem;
+}
+
+.tournament-info-card .card-body p {
+  margin-bottom: 0.8rem;
+  font-size: 0.95rem;
+}
+
+.tournament-info-card .card-body strong {
+  color: #2d3748;
+  font-weight: 600;
+}
+
+/* ===== BRACKETS MANAGEMENT SECTION ===== */
+.brackets-section {
+  background: white;
+  border: none;
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+  margin-top: 2rem;
+}
+
+.brackets-section .card-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  color: white;
+  font-weight: 700;
+  padding: 1.5rem;
+  border-radius: 12px 12px 0 0;
+}
+
+.brackets-section .card-body {
+  padding: 2rem;
+}
+
+/* ===== CATEGORY CARD ===== */
+.category-bracket-card {
+  background: white;
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 1.5rem;
+  transition: all 0.3s ease;
+  margin-bottom: 1.5rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.category-bracket-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+  transition: width 0.3s ease;
+}
+
+.category-bracket-card:hover {
+  border-color: #667eea;
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.15);
+}
+
+.category-bracket-card:hover::before {
+  width: 6px;
+}
+
+.category-bracket-card .category-name {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #2d3748;
+  margin-bottom: 0.8rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.category-bracket-card .category-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+}
+
+.category-bracket-card .meta-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #5a6c7d;
+}
+
+.category-bracket-card .meta-item strong {
+  color: #2d3748;
+  font-weight: 600;
+}
+
+/* ===== STATUS BADGES ===== */
+.bracket-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.8rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.bracket-status-badge.generated {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.bracket-status-badge.not-generated {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+/* ===== ACTION BUTTONS ===== */
+.bracket-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 1rem;
+}
+
+.btn-action {
+  flex: 1;
+  min-width: 120px;
+  border: none;
+  border-radius: 6px;
+  padding: 0.6rem 1rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  white-space: nowrap;
+}
+
+.btn-action.btn-generate {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.btn-action.btn-generate:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 15px rgba(102, 126, 234, 0.3);
+  color: white;
+  text-decoration: none;
+}
+
+.btn-action.btn-preview {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  color: white;
+}
+
+.btn-action.btn-preview:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 15px rgba(245, 87, 108, 0.3);
+  color: white;
+  text-decoration: none;
+}
+
+.btn-action.btn-disabled {
+  background: #e2e8f0;
+  color: #a0aec0;
+  cursor: not-allowed;
+}
+
+/* ===== BULK ACTIONS ===== */
+.bulk-actions {
+  background: #f8fafc;
+  border-radius: 10px;
+  padding: 1.5rem;
+  margin-top: 2rem;
+  border-left: 4px solid #667eea;
+}
+
+.bulk-actions h6 {
+  font-weight: 700;
+  color: #2d3748;
+  margin-bottom: 1rem;
+  text-transform: uppercase;
+  font-size: 0.9rem;
+  letter-spacing: 0.5px;
+}
+
+.bulk-actions .btn {
+  border-radius: 6px;
+  font-weight: 600;
+  padding: 0.75rem 1.5rem;
+  transition: all 0.3s ease;
+  margin-right: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.bulk-actions .btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+}
+
+.bulk-actions .btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 15px rgba(102, 126, 234, 0.3);
+}
+
+.bulk-actions .btn-info {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  border: none;
+  color: white;
+}
+
+.bulk-actions .btn-info:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 15px rgba(245, 87, 108, 0.3);
+  color: white;
+}
+
+/* ===== ALERT STYLING ===== */
+.alert {
+  border-radius: 8px;
+  border: none;
+  padding: 1rem 1.5rem;
+  font-weight: 500;
+}
+
+.alert-info {
+  background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);
+  color: #1565c0;
+}
+
+.alert-warning {
+  background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+  color: #e65100;
+}
+
+/* ===== PARTICIPANT CARD ===== */
 .participant-card {
   cursor: move;
   transition: transform 0.2s;
@@ -460,48 +726,8 @@
 }
 
 .group-participants.drag-over {
-  border-color: #007bff;
+  border-color: #667eea;
   background-color: #f8f9fa;
-}
-
-/* Brackets Management Styles */
-.border-left-primary {
-  border-left: 5px solid #007bff !important;
-}
-
-.border-left-success {
-  border-left: 5px solid #28a745 !important;
-}
-
-.border-left-info {
-  border-left: 5px solid #17a2b8 !important;
-}
-
-.border-left-warning {
-  border-left: 5px solid #ffc107 !important;
-}
-
-.card-body h6 {
-  margin-bottom: 0.5rem;
-  font-size: 1rem;
-}
-
-.bracket-status {
-  display: inline-block;
-  padding: 0.25rem 0.5rem;
-  border-radius: 0.25rem;
-  font-size: 0.85rem;
-  font-weight: 500;
-}
-
-.bracket-status.generated {
-  background-color: #d4edda;
-  color: #155724;
-}
-
-.bracket-status.not-generated {
-  background-color: #f8d7da;
-  color: #721c24;
 }
 </style>
 

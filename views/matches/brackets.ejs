@@ -30,61 +30,136 @@
             <% } else if (category.bracketType === 'single_elimination') { %>
               <!-- Single Elimination Bracket - Professional Display -->
               <div class="bracket-display">
-                <div class="bracket-wrapper">
-                  <% category.rounds.forEach((round, roundIndex) => { %>
-                    <div class="bracket-round">
-                      <div class="round-label">
-                        <div class="round-name"><%= round.name %></div>
-                        <div class="round-matches"><%= round.matches.length %> meczów</div>
-                      </div>
-                      <div class="matches-column">
-                        <% round.matches.forEach((match, matchIndex) => { %>
-                          <div class="bracket-match <%= match.status %>" data-match-id="<%= match._id %>">
-                            <div class="match-box">
-                              <div class="match-number">#<%= match.matchNumber %></div>
-                              
-                              <div class="competitor <%= match.winner && match.winner._id.toString() === (match.participant1 ? match.participant1._id.toString() : '') ? 'winner' : '' %>">
-                                <div class="competitor-name">
-                                  <% if (match.participant1) { %>
-                                    <% if (match.participant1.beltRank) { %>
-                                      <span class="belt-color" style="background-color: <%= match.participant1.beltRank.color %>;"></span>
-                                    <% } %>
-                                    <span><%= match.participant1.firstName %> <%= match.participant1.lastName %></span>
-                                  <% } else { %>
-                                    <span class="text-muted">TBD</span>
-                                  <% } %>
-                                </div>
-                                <div class="competitor-score"><%= match.score1 || '-' %></div>
-                              </div>
-                              
-                              <div class="match-divider"></div>
-                              
-                              <div class="competitor <%= match.winner && match.winner._id.toString() === (match.participant2 ? match.participant2._id.toString() : '') ? 'winner' : '' %>">
-                                <div class="competitor-name">
-                                  <% if (match.participant2) { %>
-                                    <% if (match.participant2.beltRank) { %>
-                                      <span class="belt-color" style="background-color: <%= match.participant2.beltRank.color %>;"></span>
-                                    <% } %>
-                                    <span><%= match.participant2.firstName %> <%= match.participant2.lastName %></span>
-                                  <% } else { %>
-                                    <span class="text-muted">TBD</span>
-                                  <% } %>
-                                </div>
-                                <div class="competitor-score"><%= match.score2 || '-' %></div>
-                              </div>
-                              
-                              <% if (match.court || match.scheduledTime) { %>
-                                <div class="match-meta">
-                                  <% if (match.court) { %><small>Boisko: <%= match.court %></small><% } %>
-                                  <% if (match.scheduledTime) { %><small><%= new Date(match.scheduledTime).toLocaleTimeString() %></small><% } %>
-                                </div>
-                              <% } %>
-                            </div>
-                          </div>
-                        <% }) %>
-                      </div>
+                <!-- Separate Preliminary Phase if exists -->
+                <% const preliminaryRounds = category.rounds.filter(r => r.isPreliminary); %>
+                <% const mainRounds = category.rounds.filter(r => !r.isPreliminary); %>
+                
+                <% if (preliminaryRounds.length > 0) { %>
+                  <div class="phase-section preliminary-phase">
+                    <div class="phase-title">
+                      <i class="fas fa-filter"></i> Faza Eliminacyjna (Wstępna)
                     </div>
-                  <% }) %>
+                    <div class="bracket-wrapper preliminary-wrapper">
+                      <% preliminaryRounds.forEach((round, roundIndex) => { %>
+                        <div class="bracket-round">
+                          <div class="round-label">
+                            <div class="round-name"><%= round.name %></div>
+                            <div class="round-matches"><%= round.matches.length %> meczów</div>
+                          </div>
+                          <div class="matches-column">
+                            <% round.matches.forEach((match, matchIndex) => { %>
+                              <div class="bracket-match <%= match.status %>" data-match-id="<%= match._id %>">
+                                <div class="match-box">
+                                  <div class="match-number">#<%= match.matchNumber %></div>
+                                  
+                                  <div class="competitor <%= match.winner && match.winner._id.toString() === (match.participant1 ? match.participant1._id.toString() : '') ? 'winner' : '' %>">
+                                    <div class="competitor-name">
+                                      <% if (match.participant1) { %>
+                                        <% if (match.participant1.beltRank) { %>
+                                          <span class="belt-color" style="background-color: <%= match.participant1.beltRank.color %>;"></span>
+                                        <% } %>
+                                        <span><%= match.participant1.firstName %> <%= match.participant1.lastName %></span>
+                                      <% } else { %>
+                                        <span class="text-muted">TBD</span>
+                                      <% } %>
+                                    </div>
+                                    <div class="competitor-score"><%= match.score1 || '-' %></div>
+                                  </div>
+                                  
+                                  <div class="match-divider"></div>
+                                  
+                                  <div class="competitor <%= match.winner && match.winner._id.toString() === (match.participant2 ? match.participant2._id.toString() : '') ? 'winner' : '' %>">
+                                    <div class="competitor-name">
+                                      <% if (match.participant2) { %>
+                                        <% if (match.participant2.beltRank) { %>
+                                          <span class="belt-color" style="background-color: <%= match.participant2.beltRank.color %>;"></span>
+                                        <% } %>
+                                        <span><%= match.participant2.firstName %> <%= match.participant2.lastName %></span>
+                                      <% } else { %>
+                                        <span class="text-muted">TBD</span>
+                                      <% } %>
+                                    </div>
+                                    <div class="competitor-score"><%= match.score2 || '-' %></div>
+                                  </div>
+                                  
+                                  <% if (match.court || match.scheduledTime) { %>
+                                    <div class="match-meta">
+                                      <% if (match.court) { %><small>Boisko: <%= match.court %></small><% } %>
+                                      <% if (match.scheduledTime) { %><small><%= new Date(match.scheduledTime).toLocaleTimeString() %></small><% } %>
+                                    </div>
+                                  <% } %>
+                                </div>
+                              </div>
+                            <% }) %>
+                          </div>
+                        </div>
+                      <% }) %>
+                    </div>
+                    <div class="phase-arrow"><i class="fas fa-arrow-right"></i></div>
+                  </div>
+                <% } %>
+                
+                <!-- Main Bracket Phase -->
+                <div class="phase-section main-phase">
+                  <div class="phase-title">
+                    <i class="fas fa-crown"></i> Turniej Główny
+                  </div>
+                  <div class="bracket-wrapper main-wrapper">
+                    <% mainRounds.forEach((round, roundIndex) => { %>
+                      <div class="bracket-round">
+                        <div class="round-label">
+                          <div class="round-name"><%= round.name %></div>
+                          <div class="round-matches"><%= round.matches.length %> meczów</div>
+                        </div>
+                        <div class="matches-column">
+                          <% round.matches.forEach((match, matchIndex) => { %>
+                            <div class="bracket-match <%= match.status %>" data-match-id="<%= match._id %>">
+                              <div class="match-box">
+                                <div class="match-number">#<%= match.matchNumber %></div>
+                                
+                                <div class="competitor <%= match.winner && match.winner._id.toString() === (match.participant1 ? match.participant1._id.toString() : '') ? 'winner' : '' %>">
+                                  <div class="competitor-name">
+                                    <% if (match.participant1) { %>
+                                      <% if (match.participant1.beltRank) { %>
+                                        <span class="belt-color" style="background-color: <%= match.participant1.beltRank.color %>;"></span>
+                                      <% } %>
+                                      <span><%= match.participant1.firstName %> <%= match.participant1.lastName %></span>
+                                    <% } else { %>
+                                      <span class="text-muted">TBD</span>
+                                    <% } %>
+                                  </div>
+                                  <div class="competitor-score"><%= match.score1 || '-' %></div>
+                                </div>
+                                
+                                <div class="match-divider"></div>
+                                
+                                <div class="competitor <%= match.winner && match.winner._id.toString() === (match.participant2 ? match.participant2._id.toString() : '') ? 'winner' : '' %>">
+                                  <div class="competitor-name">
+                                    <% if (match.participant2) { %>
+                                      <% if (match.participant2.beltRank) { %>
+                                        <span class="belt-color" style="background-color: <%= match.participant2.beltRank.color %>;"></span>
+                                      <% } %>
+                                      <span><%= match.participant2.firstName %> <%= match.participant2.lastName %></span>
+                                    <% } else { %>
+                                      <span class="text-muted">TBD</span>
+                                    <% } %>
+                                  </div>
+                                  <div class="competitor-score"><%= match.score2 || '-' %></div>
+                                </div>
+                                
+                                <% if (match.court || match.scheduledTime) { %>
+                                  <div class="match-meta">
+                                    <% if (match.court) { %><small>Boisko: <%= match.court %></small><% } %>
+                                    <% if (match.scheduledTime) { %><small><%= new Date(match.scheduledTime).toLocaleTimeString() %></small><% } %>
+                                  </div>
+                                <% } %>
+                              </div>
+                            </div>
+                          <% }) %>
+                        </div>
+                      </div>
+                    <% }) %>
+                  </div>
                 </div>
               </div>
             <% } else if (category.bracketType === 'round_robin') { %>
